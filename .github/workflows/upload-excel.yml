@@ -1,0 +1,50 @@
+name: Upload Excel to Neon
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_content:
+        description: 'Base64 encoded Excel file'
+        required: true
+        type: string
+      file_name:
+        description: 'Original file name'
+        required: true
+        type: string
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pandas openpyxl psycopg2-binary tqdm
+      
+      - name: Decode Excel file
+        run: |
+          echo "${{ github.event.inputs.file_content }}" | base64 -d > Emitir.xlsx
+          echo "✅ Arquivo decodificado: $(ls -lh Emitir.xlsx)"
+      
+      - name: Upload to Neon
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TABELA: ${{ secrets.TABELA }}
+        run: |
+          python scripts/upload_planilha_neon.py
+      
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upload-logs
+          path: '*.log'
+          retention-days: 7

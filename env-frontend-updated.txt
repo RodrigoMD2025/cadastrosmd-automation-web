@@ -1,0 +1,18 @@
+# ⚠️ CONFIGURAÇÕES DO FRONTEND - COPIE ESTE CONTEÚDO PARA .env
+
+# Ambiente: 'dev' para desenvolvimento local, 'prod' para produção
+VITE_ENV="dev"
+
+# Repositório GitHub (formato: usuario/repositorio)
+VITE_GITHUB_REPO="RodrigoMD2025/cadastrosmd-automation-web"
+
+# URLs das Cloud Functions
+# DESENVOLVIMENTO (emuladores locais - PORTAS ATUALIZADAS)
+VITE_UPLOAD_FUNCTION_URL_DEV="http://127.0.0.1:5002/automacao-neon-auth/us-central1/uploadFile"
+
+# PRODUÇÃO (será definida após deploy)
+VITE_UPLOAD_FUNCTION_URL_PROD=""
+
+# ⚠️ IMPORTANTE: 
+# - Nunca commite este arquivo (apenas o env.example)
+# - Para produção, configure as URLs reais das suas Cloud Functions
