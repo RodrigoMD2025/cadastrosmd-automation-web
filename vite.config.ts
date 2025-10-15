@@ -6,7 +6,7 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   // Configuração para GitHub Pages
-  base: mode === "production" ? "/flow-trigger-graph/" : "/",
+  base: mode === "production" ? "/cadastrosmd-automation-web/" : "/",
   server: {
     host: "::",
     port: 8080,
