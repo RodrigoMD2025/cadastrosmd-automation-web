@@ -1,0 +1,36 @@
+name: Processar Excel Neon
+
+on:
+  push:
+    paths:
+      - 'uploads/*.xlsx'
+      - 'uploads/*.xls'
+
+jobs:
+  process-excel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: |
+          pip install pandas psycopg2-binary openpyxl
+
+      - name: Processar arquivo Excel
+        run: |
+          for file in uploads/*.xlsx uploads/*.xls; do
+            if [ -f "$file" ]; then
+              python scripts/upload_planilha_neon.py "$file"
+            fi
+          done
+        env:
+          NEON_DB_USER: ${{ secrets.NEON_DB_USER }}
+          NEON_DB_PASS: ${{ secrets.NEON_DB_PASS }}
+          NEON_DB_HOST: ${{ secrets.NEON_DB_HOST }}
+          NEON_DB_NAME: ${{ secrets.NEON_DB_NAME }}

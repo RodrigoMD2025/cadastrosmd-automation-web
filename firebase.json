@@ -1,7 +1,24 @@
 {
-  "functions": {
-    "source": "functions"
-  },
+  "functions": [
+    {
+      "codebase": "default",
+      "source": "functions"
+    },
+    {
+      "source": "uploadfile",
+      "codebase": "uploadfile",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ]
+    }
+  ],
   "emulators": {
     "auth": {
       "port": 9098

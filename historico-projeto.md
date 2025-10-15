@@ -1,3 +1,28 @@
+#
+# 🚀 Novo Fluxo: Upload via GitHub API e Processamento no GitHub Actions
+
+## Passo a Passo
+
+1. **Login do usuário via Google (Firebase Authentication)**
+2. **Upload do arquivo Excel pelo frontend React**
+  - O arquivo é enviado diretamente para o repositório do GitHub usando a API REST
+  - O upload é feito na pasta `uploads/` do repositório
+  - Autenticação via token pessoal do GitHub
+3. **Disparo automático do GitHub Actions**
+  - O workflow é configurado para rodar ao detectar novo arquivo na pasta `uploads/`
+  - O script Python do Neon é executado dentro do container do GitHub Actions
+  - Secrets do GitHub são usados para garantir segurança no processamento
+4. **Resultado do processamento**
+  - O resultado pode ser salvo em banco de dados, enviado por e-mail ou exibido no painel
+
+## Vantagens
+- Sem custos extras de backend
+- Segurança garantida pelos secrets do GitHub
+- Flexibilidade para rodar scripts Python
+
+## Observações
+- O token do GitHub deve ser mantido seguro e nunca exposto no frontend público
+- O workflow pode ser adaptado para diferentes tipos de processamento
 # Histórico do Projeto - Sistema de Automação com Firebase e Neon
 
 ## 📋 Visão Geral do Projeto

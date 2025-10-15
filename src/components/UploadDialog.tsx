@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
-import { auth, functions } from "@/integrations/firebase/client";
-import { httpsCallable } from "firebase/functions";
+// import { auth, functions } from "@/integrations/firebase/client";
+// import { httpsCallable } from "firebase/functions";
 
 interface UploadDialogProps {
   open: boolean;
@@ -49,11 +49,7 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
       return;
     }
     
-    const user = auth.currentUser;
-    if (!user) {
-      toast.error("Você precisa estar logado para fazer o upload.");
-      return;
-    }
+    // Remover validação do Firebase Auth, se desejar pode validar login Google separadamente
 
     setUploading(true);
     const uploadToast = toast.info("Iniciando upload...", { 
@@ -61,96 +57,54 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
       duration: 0 // Toast persistente
     });
 
-    const maxRetries = 3;
-    let lastError: any;
+    // Upload via GitHub API
+    try {
+      toast.info("Enviando arquivo para o GitHub...");
+      // Token pessoal do GitHub (configure via .env ou peça ao usuário)
+      const GITHUB_TOKEN = import.meta.env.VITE_GITHUB_TOKEN;
+      const REPO = "RodrigoMD2025/cadastrosmd-automation-web"; // ajuste para seu repo
+      const BRANCH = "main";
+      const PATH = `uploads/${file.name}`; // pasta uploads no repo
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        toast.info(`Tentativa ${attempt}/${maxRetries}...`, {
-          description: attempt > 1 ? "Tentando novamente..." : "Enviando arquivo..."
-        });
+      // Ler arquivo como base64
+      const fileBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
-        const idToken = await user.getIdToken();
-        
-        // Determina a URL da função baseada no ambiente
-        const env = import.meta.env.VITE_ENV || 'dev';
-        const uploadUrl = env === 'prod' 
-          ? import.meta.env.VITE_UPLOAD_FUNCTION_URL_PROD
-          : import.meta.env.VITE_UPLOAD_FUNCTION_URL_DEV;
+      // Criar arquivo via API do GitHub
+      const response = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${GITHUB_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: `Upload de arquivo via frontend: ${file.name}`,
+          content: fileBase64,
+          branch: BRANCH,
+        }),
+      });
 
-        if (!uploadUrl) {
-          throw new Error(`A URL da função de upload não está configurada para o ambiente: ${env}`);
-        }
-
-        // Cria FormData para upload estruturado
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('fileName', file.name);
-        formData.append('fileSize', file.size.toString());
-
-        console.log('Tentando upload para:', uploadUrl);
-        
-        const response = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${idToken}`,
-            'Content-Type': 'multipart/form-data',
-          },
-          body: formData,
-          mode: 'cors',
-          credentials: 'include',
-          // Adiciona um timeout de 30 segundos
-          signal: AbortSignal.timeout(30000)
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Erro no upload:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText
-          });
-          let errorMessage;
-          
-          try {
-            const errorJson = JSON.parse(errorText);
-            errorMessage = errorJson.message || errorText;
-          } catch {
-            errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
-          }
-          
-          throw new Error(errorMessage);
-        }
-
-        const result = await response.json();
-        
-        toast.dismiss(uploadToast);
-        toast.success("✅ Upload concluído!", { 
-          description: result.message || "O processamento foi iniciado. Acompanhe o progresso no painel."
-        });
-        
-        onOpenChange(false);
-        setFile(null);
-        return; // Sucesso, sair do loop
-
-      } catch (error: any) {
-        lastError = error;
-        console.error(`Tentativa ${attempt} falhou:`, error);
-        
-        if (attempt < maxRetries) {
-          // Aguarda antes da próxima tentativa (exponential backoff)
-          const delay = Math.pow(2, attempt) * 1000;
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText);
       }
-    }
 
-    // Se chegou aqui, todas as tentativas falharam
-    toast.dismiss(uploadToast);
-    toast.error("❌ Erro ao fazer upload", { 
-      description: `Tentativas esgotadas. Último erro: ${lastError?.message || 'Erro desconhecido'}`
-    });
-    
+      toast.dismiss(uploadToast);
+      toast.success("✅ Upload concluído!", {
+        description: "Arquivo enviado para o repositório do GitHub. O processamento será iniciado pelo GitHub Actions."
+      });
+      onOpenChange(false);
+      setFile(null);
+    } catch (error: any) {
+      toast.dismiss(uploadToast);
+      toast.error("❌ Erro ao enviar para o GitHub", {
+        description: error?.message || "Erro desconhecido"
+      });
+    }
     setUploading(false);
   };
 
