@@ -1,3 +1,6 @@
+# Ignorar todos os arquivos markdown, exceto README.md
+*.md
+!README.md
 # Dependencies
 node_modules/
 functions/node_modules/
@@ -117,3 +120,9 @@ venv.bak/
 
 # Scripts Python logs
 *.log
+
+# Ignored env files
+env-functions-updated.txt
+env-frontend-updated.txt
+env-functions-corrected.txt
+env-frontend-corrected.txt
