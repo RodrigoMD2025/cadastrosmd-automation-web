@@ -1,14 +1,17 @@
-name: Run Playwright Automation
+name: Executar Playwright
 
 on:
-  workflow_dispatch:
+  issues:
+    types: [opened]
 
 jobs:
   playwright:
+    # Só executa se a issue tiver a label 'run-playwright'
+    if: contains(github.event.issue.labels.*.name, 'run-playwright')
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
       
       - name: Setup Python
@@ -16,13 +19,13 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Install dependencies
+      - name: Instalar dependências
         run: |
           pip install playwright psycopg2-binary pandas tqdm requests python-dotenv
           playwright install chromium
           playwright install-deps
       
-      - name: Run Playwright Script
+      - name: Executar Playwright
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TABELA: ${{ secrets.TABELA }}
@@ -33,10 +36,23 @@ jobs:
         run: |
           python scripts/client_cad_painel_neon.py
       
-      - name: Upload logs as artifact
+      - name: Comentar resultado
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/github-script@v7
         with:
-          name: playwright-logs
-          path: '*.log'
-          retention-days: 7
+          script: |
+            const status = '${{ job.status }}' === 'success' ? '✅ Concluído' : '❌ Erro';
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `${status}\n\nVerifique os logs para detalhes.`
+            });
+            
+            // Fecha a issue
+            github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed'
+            });

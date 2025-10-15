@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
-// import { auth, functions } from "@/integrations/firebase/client";
-// import { httpsCallable } from "firebase/functions";
 
 interface UploadDialogProps {
   open: boolean;
@@ -15,12 +13,12 @@ interface UploadDialogProps {
 const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const GITHUB_REPO = 'RodrigoMD2025/cadastrosmd-automation-web';
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       
-      // Validação de formato
       if (!selectedFile.name.match(/\.(xlsx|xls)$/i)) {
         toast.error("Formato inválido", { 
           description: "Por favor, selecione um arquivo Excel (.xlsx ou .xls)." 
@@ -28,7 +26,6 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
         return;
       }
       
-      // Validação de tamanho (máx 10MB)
       if (selectedFile.size > 10 * 1024 * 1024) {
         toast.error("Arquivo muito grande", {
           description: "O arquivo deve ter no máximo 10MB."
@@ -43,70 +40,84 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
     }
   };
 
-  const handleUpload = async () => {
+  async function handleUpload() {
     if (!file) {
-      toast.error("Nenhum arquivo selecionado");
+      toast.error('Selecione um arquivo');
       return;
     }
-    
-    // Remover validação do Firebase Auth, se desejar pode validar login Google separadamente
 
     setUploading(true);
-    const uploadToast = toast.info("Iniciando upload...", { 
-      description: "O arquivo está sendo enviado para processamento.",
-      duration: 0 // Toast persistente
-    });
 
-    // Upload via GitHub API
     try {
-      toast.info("Enviando arquivo para o GitHub...");
-      // Token pessoal do GitHub (configure via .env ou peça ao usuário)
-      const GITHUB_TOKEN = import.meta.env.VITE_GITHUB_TOKEN;
-      const REPO = "RodrigoMD2025/cadastrosmd-automation-web"; // ajuste para seu repo
-      const BRANCH = "main";
-      const PATH = `uploads/${file.name}`; // pasta uploads no repo
-
-      // Ler arquivo como base64
-      const fileBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      // 1. Upload para transfer.sh
+      toast.info('📤 Enviando arquivo...');
+      
+      const transferResponse = await fetch(`https://transfer.sh/${file.name}`, {
+        method: 'PUT',
+        body: file,
       });
 
-      // Criar arquivo via API do GitHub
-      const response = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${GITHUB_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: `Upload de arquivo via frontend: ${file.name}`,
-          content: fileBase64,
-          branch: BRANCH,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
+      if (!transferResponse.ok) {
+        throw new Error('Erro ao fazer upload para transfer.sh');
       }
 
-      toast.dismiss(uploadToast);
-      toast.success("✅ Upload concluído!", {
-        description: "Arquivo enviado para o repositório do GitHub. O processamento será iniciado pelo GitHub Actions."
+      const fileUrl = await transferResponse.text();
+      const cleanUrl = fileUrl.trim();
+
+      toast.success('✅ Arquivo enviado!');
+
+      // 2. Criar Issue no GitHub (SEM AUTENTICAÇÃO!)
+      toast.info('🚀 Iniciando processamento...');
+
+      const issueBody = {
+        title: `📊 Upload: ${file.name}`,
+        body: `## Novo upload de planilha
+        
+**Arquivo:** ${file.name}
+**Tamanho:** ${(file.size / 1024).toFixed(2)} KB
+**Data:** ${new Date().toLocaleString('pt-BR')}
+**URL:** ${cleanUrl}
+
+---
+🤖 Este upload será processado automaticamente pelo GitHub Actions.`,
+        labels: ['upload', 'auto-process']
+      };
+
+      const issueResponse = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPO}/issues`,
+        {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(issueBody)
+        }
+      );
+
+      if (!issueResponse.ok) {
+        const error = await issueResponse.json();
+        throw new Error(error.message || 'Erro ao criar issue');
+      }
+
+      const issue = await issueResponse.json();
+
+      toast.success('✅ Processamento iniciado!', {
+        description: `Acompanhe em: ${issue.html_url}`,
+        duration: 10000,
       });
+
+      window.open(issue.html_url, '_blank');
       onOpenChange(false);
       setFile(null);
-    } catch (error: any) {
-      toast.dismiss(uploadToast);
-      toast.error("❌ Erro ao enviar para o GitHub", {
-        description: error?.message || "Erro desconhecido"
-      });
+
+    } catch (error) {
+      console.error('Erro:', error);
+      toast.error('❌ Erro: ' + (error as Error).message);
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
-  };
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

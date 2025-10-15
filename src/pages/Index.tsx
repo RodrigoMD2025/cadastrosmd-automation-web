@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, firestore, functions } from "@/integrations/firebase/client";
+import { auth, firestore } from "@/integrations/firebase/client";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
+import { PlaywrightTrigger } from "@/components/PlaywrightTrigger";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, Play, Database, LogOut } from "lucide-react";
@@ -16,7 +16,7 @@ const Index = () => {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [progress, setProgress] = useState({ total: 0, processed: 0, status: 'idle' });
-  const [isTriggering, setIsTriggering] = useState(false);
+  
 
   // Efeito para autenticação
   useEffect(() => {
@@ -61,22 +61,7 @@ const Index = () => {
     navigate("/auth");
   };
 
-  const handleTriggerWorkflow = async () => {
-    setIsTriggering(true);
-    toast.info("Disparando workflow de automação...");
-    try {
-      const triggerPlaywright = httpsCallable(functions, 'triggerPlaywright');
-      const result = await triggerPlaywright();
-      toast.success("Workflow disparado com sucesso!", { 
-        description: "Acompanhe o progresso na aba Actions do seu repositório GitHub."
-      });
-    } catch (error: any) {
-      console.error("Erro ao disparar workflow:", error);
-      toast.error("Erro ao disparar workflow", { description: error.message });
-    } finally {
-      setIsTriggering(false);
-    }
-  };
+
 
   if (!userEmail) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
@@ -144,10 +129,7 @@ const Index = () => {
             Upload Planilha
           </Button>
           
-          <Button onClick={handleTriggerWorkflow} variant="secondary" className="gap-2" size="lg" disabled={isTriggering}>
-            <Play className="h-4 w-4" />
-            {isTriggering ? 'Disparando...' : 'Executar Automação'}
-          </Button>
+          <PlaywrightTrigger />
         </div>
 
         {/* Progress Chart */}
