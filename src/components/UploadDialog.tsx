@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { Input } from "@/components/ui/input";
 import { Upload, FileSpreadsheet } from "lucide-react";
-import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 
 interface UploadDialogProps {
   open: boolean;
@@ -11,9 +12,11 @@ interface UploadDialogProps {
 }
 
 const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
-  const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const GITHUB_REPO = 'RodrigoMD2025/cadastrosmd-automation-web';
+  const [file, setFile] = useState<File | null>(null);
+
+  // Altere para a URL do seu projeto na Vercel
+  const API_URL = 'https://cadastrosmd-automation-web.vercel.app'; // <<<<<<< ATUALIZE ESTA LINHA
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -26,9 +29,9 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
         return;
       }
       
-      if (selectedFile.size > 10 * 1024 * 1024) {
+      if (selectedFile.size > 25 * 1024 * 1024) { // Aumentado para 25MB para corresponder ao Worker
         toast.error("Arquivo muito grande", {
-          description: "O arquivo deve ter no máximo 10MB."
+          description: "O arquivo deve ter no máximo 25MB."
         });
         return;
       }
@@ -49,78 +52,38 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
     setUploading(true);
 
     try {
-      // 1. Upload para transfer.sh
-      toast.info('📤 Enviando arquivo...');
-      
       const formData = new FormData();
       formData.append('file', file);
 
-      const fileIoResponse = await fetch('https://file.io/', {
+      toast.info('📤 Enviando arquivo...');
+
+      const response = await fetch(`${API_URL}/upload`, {
         method: 'POST',
         body: formData,
       });
 
-      if (!fileIoResponse.ok) {
-        throw new Error('Erro ao fazer upload para file.io');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro no upload');
       }
 
-      const fileIoData = await fileIoResponse.json();
-      const fileUrl = fileIoData.link; // file.io retorna o link no campo 'link'
+      const data = await response.json();
 
-      if (!fileUrl) {
-        throw new Error('Link do arquivo não retornado pelo file.io');
-      }
-
-      toast.success('✅ Arquivo enviado!');
-
-      // 2. Criar Issue no GitHub (SEM AUTENTICAÇÃO!)
-      toast.info('🚀 Iniciando processamento...');
-
-      const issueBody = {
-        title: `📊 Upload: ${file.name}`,
-        body: `## Novo upload de planilha
-        
-**Arquivo:** ${file.name}
-**Tamanho:** ${(file.size / 1024).toFixed(2)} KB
-**Data:** ${new Date().toLocaleString('pt-BR')}
-**URL:** ${cleanUrl}
-
----
-🤖 Este upload será processado automaticamente pelo GitHub Actions.`,
-        labels: ['upload', 'auto-process']
-      };
-
-      const issueResponse = await fetch(
-        `https://api.github.com/repos/${GITHUB_REPO}/issues`,
-        {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(issueBody)
-        }
-      );
-
-      if (!issueResponse.ok) {
-        const error = await issueResponse.json();
-        throw new Error(error.message || 'Erro ao criar issue');
-      }
-
-      const issue = await issueResponse.json();
-
-      toast.success('✅ Processamento iniciado!', {
-        description: `Acompanhe em: ${issue.html_url}`,
+      toast.success('✅ Upload concluído!', {
+        description: `Arquivo: ${data.fileName} (${(data.size / 1024).toFixed(2)} KB)`,
+        action: {
+          label: 'Ver execução',
+          onClick: () => window.open(data.githubActionsUrl, '_blank'),
+        },
         duration: 10000,
       });
 
-      window.open(issue.html_url, '_blank');
-      onOpenChange(false);
       setFile(null);
+      onOpenChange(false); // Fechar o dialog após o upload
 
     } catch (error) {
       console.error('Erro:', error);
-      toast.error('❌ Erro: ' + (error as Error).message);
+      toast.error('❌ ' + (error as Error).message);
     } finally {
       setUploading(false);
     }
@@ -136,37 +99,37 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-center w-full">
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card/50 hover:bg-card/80 border-primary/20 hover:border-primary/40 transition-colors">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                {file ? (
-                  <>
-                    <FileSpreadsheet className="w-8 h-8 mb-2 text-primary" />
-                    <p className="text-sm text-foreground font-medium">{file.name}</p>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Clique para selecionar ou arraste o arquivo</p>
-                  </>
-                )}
-              </div>
-              <Input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileChange}
-                className="hidden"
-              />
+        <div className="space-y-4 p-6 bg-white rounded-lg shadow">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Selecione a planilha Excel
             </label>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileChange}
+              className="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-lg file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100
+                cursor-pointer"
+            />
           </div>
-
+          
+          {file && (
+            <div className="text-sm text-gray-600">
+              📎 {file.name} ({(file.size / 1024).toFixed(2)} KB)
+            </div>
+          )}
+          
           <Button 
-            onClick={handleUpload} 
+            onClick={handleUpload}
             disabled={!file || uploading}
             className="w-full"
           >
-            {uploading ? "Enviando..." : "Enviar para Processamento"}
+            {uploading ? '⏳ Enviando...' : '🚀 Fazer Upload'}
           </Button>
         </div>
       </DialogContent>

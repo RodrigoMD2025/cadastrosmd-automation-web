@@ -4,60 +4,62 @@ import { toast } from 'sonner';
 
 export function PlaywrightTrigger() {
   const [running, setRunning] = useState(false);
-  const GITHUB_REPO = 'RodrigoMD2025/cadastrosmd-automation-web';
+
+  const API_URL = 'https://cadastrosmd-automation-web.vercel.app/'; // <<<<<<< ATUALIZE ESTA LINHA
 
   async function triggerPlaywright() {
+    const confirmacao = confirm(
+      'Deseja iniciar a automação Playwright?\n\n' +
+      'Isso irá processar os dados do Neon e cadastrar no sistema.'
+    );
+
+    if (!confirmacao) return;
+
     setRunning(true);
 
     try {
-      toast.info('🎭 Iniciando automação Playwright...');
-
-      const issueBody = {
-        title: `🎭 Executar Playwright - ${new Date().toLocaleString('pt-BR')}`,
-        body: `## Solicitação de execução do Playwright
-
-**Data:** ${new Date().toLocaleString('pt-BR')}
-
----
-🤖 Este processo será executado automaticamente.`,
-        labels: ['run-playwright', 'automation']
-      };
-
-      const response = await fetch(
-        `https://api.github.com/repos/${GITHUB_REPO}/issues`,
-        {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(issueBody)
-        }
-      );
+      const response = await fetch(`${API_URL}/trigger-playwright`, {
+        method: 'POST',
+      });
 
       if (!response.ok) {
-        throw new Error('Erro ao criar issue');
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao disparar');
       }
 
-      const issue = await response.json();
+      const data = await response.json();
 
       toast.success('✅ Automação iniciada!', {
-        description: `Acompanhe em: ${issue.html_url}`,
+        description: 'Acompanhe o progresso no GitHub Actions',
+        action: {
+          label: 'Ver execução',
+          onClick: () => window.open(data.githubActionsUrl, '_blank'),
+        },
         duration: 10000,
       });
 
-      window.open(issue.html_url, '_blank');
-
     } catch (error) {
-      toast.error('❌ Erro: ' + (error as Error).message);
+      toast.error('❌ ' + (error as Error).message);
     } finally {
       setRunning(false);
     }
   }
 
   return (
-    <Button onClick={triggerPlaywright} disabled={running}>
-      {running ? '⏳ Iniciando...' : '▶️ Executar Playwright'}
-    </Button>
+    <div className="p-6 bg-white rounded-lg shadow">
+      <h3 className="text-lg font-semibold mb-4">
+        🎭 Automação Playwright
+      </h3>
+      <p className="text-sm text-gray-600 mb-4">
+        Busca dados do Neon e executa cadastros no sistema externo
+      </p>
+      <Button 
+        onClick={triggerPlaywright} 
+        disabled={running}
+        className="w-full"
+      >
+        {running ? '⏳ Iniciando...' : '▶️ Executar Playwright'}
+      </Button>
+    </div>
   );
 }

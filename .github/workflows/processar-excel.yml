@@ -1,30 +1,33 @@
-name: Processar Upload via Issue
+name: Processar Excel do Vercel Blob
 
 on:
-  issues:
-    types: [opened]
+  workflow_dispatch:
+    inputs:
+      blob_url:
+        description: 'URL do arquivo no Vercel Blob'
+        required: true
+        type: string
+      upload_id:
+        description: 'ID do upload'
+        required: true
+        type: string
+      file_name:
+        description: 'Nome original do arquivo'
+        required: true
+        type: string
 
 jobs:
   processar:
-    # Só executa se a issue tiver a label 'auto-process'
-    if: contains(github.event.issue.labels.*.name, 'auto-process')
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Extrair URL do arquivo
-        id: extract
+      - name: Baixar arquivo do Vercel Blob
         run: |
-          # Extrai a URL do corpo da issue
-          URL=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=**URL:** ).*')
-          echo "file_url=$URL" >> $GITHUB_OUTPUT
-          echo "📎 URL extraída: $URL"
-      
-      - name: Baixar arquivo
-        run: |
-          curl -L "${{ steps.extract.outputs.file_url }}" -o Emitir.xlsx
+          echo "📥 Baixando arquivo: ${{ github.event.inputs.file_name }}"
+          curl -L -o Emitir.xlsx "${{ github.event.inputs.blob_url }}"
           echo "✅ Arquivo baixado: $(ls -lh Emitir.xlsx)"
       
       - name: Setup Python
@@ -43,46 +46,19 @@ jobs:
         run: |
           python scripts/upload_planilha_neon.py
       
-      - name: Comentar sucesso na issue
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: '✅ **Processamento concluído com sucesso!**\n\nOs dados foram importados para o Neon PostgreSQL.'
-            });
-      
-      - name: Comentar erro na issue
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: '❌ **Erro no processamento**\n\nVerifique os logs do workflow para mais detalhes.'
-            });
-      
-      - name: Fechar issue automaticamente
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              state: 'closed'
-            });
-      
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: logs-${{ github.event.issue.number }}
+          name: logs-${{ github.event.inputs.upload_id }}
           path: '*.log'
           retention-days: 7
+      
+      - name: Notificar conclusão
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Processamento concluído com sucesso!"
+          else
+            echo "❌ Erro no processamento"
+          fi
