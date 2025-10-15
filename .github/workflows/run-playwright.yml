@@ -1,0 +1,42 @@
+name: Run Playwright Automation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install playwright psycopg2-binary pandas tqdm requests python-dotenv
+          playwright install chromium
+          playwright install-deps
+      
+      - name: Run Playwright Script
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TABELA: ${{ secrets.TABELA }}
+          LOGIN_USERNAME: ${{ secrets.LOGIN_USERNAME }}
+          LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python scripts/client_cad_painel_neon.py
+      
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-logs
+          path: '*.log'
+          retention-days: 7
