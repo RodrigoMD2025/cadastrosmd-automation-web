@@ -52,17 +52,24 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
       // 1. Upload para transfer.sh
       toast.info('📤 Enviando arquivo...');
       
-      const transferResponse = await fetch(`https://transfer.sh/${file.name}`, {
-        method: 'PUT',
-        body: file,
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const fileIoResponse = await fetch('https://file.io/', {
+        method: 'POST',
+        body: formData,
       });
 
-      if (!transferResponse.ok) {
-        throw new Error('Erro ao fazer upload para transfer.sh');
+      if (!fileIoResponse.ok) {
+        throw new Error('Erro ao fazer upload para file.io');
       }
 
-      const fileUrl = await transferResponse.text();
-      const cleanUrl = fileUrl.trim();
+      const fileIoData = await fileIoResponse.json();
+      const fileUrl = fileIoData.link; // file.io retorna o link no campo 'link'
+
+      if (!fileUrl) {
+        throw new Error('Link do arquivo não retornado pelo file.io');
+      }
 
       toast.success('✅ Arquivo enviado!');
 
