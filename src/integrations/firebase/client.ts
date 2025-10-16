@@ -5,12 +5,12 @@ import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 // As configurações do seu projeto Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyAa78S1-3wO4kiJ2oFf7gUhaxSCfwKX4_E",
-  authDomain: "automacao-neon-auth.firebaseapp.com",
-  projectId: "automacao-neon-auth",
-  storageBucket: "automacao-neon-auth.appspot.com",
-  messagingSenderId: "292826330421",
-  appId: "1:292826330421:web:b03faaa180c53cafbf887c"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Inicializa o Firebase

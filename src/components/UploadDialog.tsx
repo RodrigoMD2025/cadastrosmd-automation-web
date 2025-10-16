@@ -94,6 +94,8 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
           <DialogTitle>Upload de Planilha</DialogTitle>
           <DialogDescription>
             Envie um arquivo Excel (.xlsx) para iniciar o processamento automático.
+            <br />
+            <strong className="text-destructive">Atenção:</strong> O envio de uma nova planilha substituirá todos os dados existentes na base.
           </DialogDescription>
         </DialogHeader>
 
