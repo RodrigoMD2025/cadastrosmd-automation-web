@@ -1,44 +1,41 @@
 import { put } from '@vercel/blob';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import busboy from 'busboy'; // ✅ import correto (não require)
 
 export const config = {
   api: {
-    bodyParser: false, // Necessário para multipart/form-data
+    bodyParser: false, // necessário para multipart/form-data
   },
 };
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // ✅ CORS seguro - domínio correto do GitHub Pages
+  res.setHeader('Access-Control-Allow-Origin', 'https://rodrigomd2025.github.io');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Vary', 'Origin');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método não permitido' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    // Parser multipart/form-data manualmente
-    const busboy = require('busboy');
+    // Verifica se há headers necessários
+    if (!req.headers['content-type']?.includes('multipart/form-data')) {
+      return res.status(400).json({ error: 'Content-Type must be multipart/form-data' });
+    }
+
     const bb = busboy({ headers: req.headers });
-
+    
     let fileBuffer: Buffer;
-    let fileName: string;
-    let fileSize: number;
+    let fileName = '';
+    let fileSize = 0;
 
-    await new Promise((resolve, reject) => {
-      bb.on('file', (name: string, file: any, info: any) => {
+    await new Promise<void>((resolve, reject) => {
+      bb.on('file', (_name, file, info) => {
         fileName = info.filename;
         const chunks: Buffer[] = [];
-
-        file.on('data', (data: Buffer) => chunks.push(data));
+        
+        file.on('data', (data) => chunks.push(data));
         file.on('end', () => {
           fileBuffer = Buffer.concat(chunks);
           fileSize = fileBuffer.length;
@@ -47,31 +44,23 @@ export default async function handler(
 
       bb.on('finish', resolve);
       bb.on('error', reject);
-
+      
       req.pipe(bb);
     });
 
     // Validações
-    if (!fileName!) {
-      return res.status(400).json({ error: 'Nenhum arquivo enviado' });
-    }
-
+    if (!fileName) return res.status(400).json({ error: 'No file uploaded' });
+    
     if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
-      return res.status(400).json({
-        error: 'Apenas arquivos Excel (.xlsx, .xls)'
-      });
+      return res.status(400).json({ error: 'Only Excel files allowed' });
     }
 
     if (fileSize > 25 * 1024 * 1024) {
-      return res.status(400).json({
-        error: 'Arquivo muito grande. Máximo: 25MB'
-      });
+      return res.status(400).json({ error: 'File too large. Max 25MB' });
     }
 
     // Gera nome único
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(7);
-    const uploadId = `excel-${timestamp}-${random}`;
+    const uploadId = `excel-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const blobName = `${uploadId}.xlsx`;
 
     // Upload para Vercel Blob
@@ -91,8 +80,8 @@ export default async function handler(
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${githubToken}`,
-          'Accept': 'application/vnd.github+json',
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github+json',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -100,31 +89,28 @@ export default async function handler(
           inputs: {
             blob_url: blob.url,
             upload_id: uploadId,
-            file_name: fileName!,
+            file_name: fileName,
           },
         }),
       }
     );
 
     if (!githubResponse.ok) {
-      const error = await githubResponse.text();
-      throw new Error(`GitHub API error: ${error}`);
+      const errorText = await githubResponse.text();
+      throw new Error(`GitHub API error: ${errorText}`);
     }
 
     return res.status(200).json({
       success: true,
       uploadId,
       blobUrl: blob.url,
-      fileName: fileName!,
+      fileName,
       size: fileSize,
-      message: 'Upload concluído! Processamento iniciado.',
+      message: 'Upload complete and workflow started.',
       githubActionsUrl: `https://github.com/${githubRepo}/actions`,
     });
-
   } catch (error) {
-    console.error('❌ Erro:', error);
-    return res.status(500).json({
-      error: (error as Error).message
-    });
+    console.error('❌ Error:', error);
+    return res.status(500).json({ error: (error as Error).message });
   }
 }

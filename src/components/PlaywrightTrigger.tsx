@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
+// ✅ usa variável de ambiente para ambiente prod/dev
+const API_URL = import.meta.env.VITE_API_URL || 'https://cadastrosmd-automation-web.vercel.app';
+
 export function PlaywrightTrigger() {
   const [running, setRunning] = useState(false);
-
-  const API_URL = 'https://cadastrosmd-automation-web.vercel.app/'; // <<<<<<< ATUALIZE ESTA LINHA
 
   async function triggerPlaywright() {
     const confirmacao = confirm(
@@ -18,13 +19,14 @@ export function PlaywrightTrigger() {
     setRunning(true);
 
     try {
-      const response = await fetch(`${API_URL}/trigger-playwright`, {
+      // ✅ rota corrigida com prefixo /api/
+      const response = await fetch(`${API_URL}/api/trigger-playwright`, {
         method: 'POST',
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Erro ao disparar');
+        throw new Error(error.error || 'Erro ao disparar automação');
       }
 
       const data = await response.json();
@@ -39,6 +41,7 @@ export function PlaywrightTrigger() {
       });
 
     } catch (error) {
+      console.error('Erro:', error);
       toast.error('❌ ' + (error as Error).message);
     } finally {
       setRunning(false);
@@ -47,11 +50,9 @@ export function PlaywrightTrigger() {
 
   return (
     <div className="p-6 bg-white rounded-lg shadow">
-      <h3 className="text-lg font-semibold mb-4">
-        🎭 Automação Playwright
-      </h3>
+      <h3 className="text-lg font-semibold mb-4">🎭 Automação Playwright</h3>
       <p className="text-sm text-gray-600 mb-4">
-        Busca dados do Neon e executa cadastros no sistema externo
+        Executa o script de automação que processa os cadastros do Neon.
       </p>
       <Button 
         onClick={triggerPlaywright} 

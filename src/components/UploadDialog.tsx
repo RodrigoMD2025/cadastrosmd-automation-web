@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Input } from "@/components/ui/input";
-import { Upload, FileSpreadsheet } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+// ✅ usa variável de ambiente (configurada no .env.production)
+const API_URL = import.meta.env.VITE_API_URL || 'https://cadastrosmd-automation-web.vercel.app';
 
 interface UploadDialogProps {
   open: boolean;
@@ -15,27 +15,24 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
-  // Altere para a URL do seu projeto na Vercel
-  const API_URL = 'https://cadastrosmd-automation-web.vercel.app'; // <<<<<<< ATUALIZE ESTA LINHA
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
-      
+
       if (!selectedFile.name.match(/\.(xlsx|xls)$/i)) {
         toast.error("Formato inválido", { 
-          description: "Por favor, selecione um arquivo Excel (.xlsx ou .xls)." 
+          description: "Selecione um arquivo Excel (.xlsx ou .xls)." 
         });
         return;
       }
-      
-      if (selectedFile.size > 25 * 1024 * 1024) { // Aumentado para 25MB para corresponder ao Worker
+
+      if (selectedFile.size > 25 * 1024 * 1024) {
         toast.error("Arquivo muito grande", {
-          description: "O arquivo deve ter no máximo 25MB."
+          description: "Máximo permitido: 25MB."
         });
         return;
       }
-      
+
       setFile(selectedFile);
       toast.success("Arquivo selecionado", {
         description: `${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`
@@ -57,7 +54,8 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
 
       toast.info('📤 Enviando arquivo...');
 
-      const response = await fetch(`${API_URL}/upload`, {
+      // ✅ corrige rota real do backend na Vercel
+      const response = await fetch(`${API_URL}/api/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -79,7 +77,7 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
       });
 
       setFile(null);
-      onOpenChange(false); // Fechar o dialog após o upload
+      onOpenChange(false);
 
     } catch (error) {
       console.error('Erro:', error);
@@ -95,7 +93,7 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
         <DialogHeader>
           <DialogTitle>Upload de Planilha</DialogTitle>
           <DialogDescription>
-            Selecione um arquivo Excel (.xlsx) para enviar aos nossos sistemas.
+            Envie um arquivo Excel (.xlsx) para iniciar o processamento automático.
           </DialogDescription>
         </DialogHeader>
 
@@ -117,13 +115,13 @@ const UploadDialog = ({ open, onOpenChange }: UploadDialogProps) => {
                 cursor-pointer"
             />
           </div>
-          
+
           {file && (
             <div className="text-sm text-gray-600">
               📎 {file.name} ({(file.size / 1024).toFixed(2)} KB)
             </div>
           )}
-          
+
           <Button 
             onClick={handleUpload}
             disabled={!file || uploading}
