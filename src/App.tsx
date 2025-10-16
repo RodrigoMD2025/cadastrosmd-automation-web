@@ -14,7 +14,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-  <BrowserRouter basename="/cadastrosmd-automation-web">
+  <BrowserRouter basename={import.meta.env.DEV ? '/' : '/cadastrosmd-automation-web'}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
