@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { Play, Loader2 } from 'lucide-react';
 
-// ✅ usa variável de ambiente para ambiente prod/dev
 const API_URL = import.meta.env.VITE_API_URL || 'https://cadastrosmd-automation-web.vercel.app';
 
 export function PlaywrightTrigger() {
   const [running, setRunning] = useState(false);
 
   async function triggerPlaywright() {
-    const confirmacao = confirm(
+    const confirmacao = window.confirm(
       'Deseja iniciar a automação Playwright?\n\n' +
       'Isso irá processar os dados do Neon e cadastrar no sistema.'
     );
@@ -19,7 +19,6 @@ export function PlaywrightTrigger() {
     setRunning(true);
 
     try {
-      // ✅ rota corrigida com prefixo /api/
       const response = await fetch(`${API_URL}/api/trigger-playwright`, {
         method: 'POST',
       });
@@ -49,18 +48,18 @@ export function PlaywrightTrigger() {
   }
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow">
-      <h3 className="text-lg font-semibold mb-4">🎭 Automação Playwright</h3>
-      <p className="text-sm text-gray-600 mb-4">
-        Executa o script de automação que processa os cadastros do Neon.
-      </p>
-      <Button 
-        onClick={triggerPlaywright} 
-        disabled={running}
-        className="w-full"
-      >
-        {running ? '⏳ Iniciando...' : '▶️ Executar Playwright'}
-      </Button>
-    </div>
+    <Button
+      onClick={triggerPlaywright}
+      disabled={running}
+      variant="success"
+      size="lg"
+      className="gap-3 h-14 text-base font-semibold transition-all duration-300 hover:scale-[1.02] w-full"
+    >
+      {running ? (
+        <><Loader2 className="h-5 w-5 animate-spin" /> Iniciando...</>
+      ) : (
+        <><Play className="h-5 w-5" /> Iniciar Cadastro</>
+      )}
+    </Button>
   );
 }
