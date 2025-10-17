@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '@/integrations/firebase/client';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,37 +18,16 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
+    // Simulação - Substituir pela lógica real do Firebase
     try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
-        toast.success('Login bem-sucedido!');
-        navigate('/');
-      } else {
-        await createUserWithEmailAndPassword(auth, email, password);
-        toast.success('Conta criada com sucesso! Você será redirecionado.');
-        navigate('/');
-      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast.success(isLogin ? 'Login bem-sucedido!' : 'Conta criada com sucesso!');
+      navigate('/');
     } catch (error: any) {
-      let errorMessage = 'Ocorreu um erro. Tente novamente.';
-      switch (error.code) {
-        case 'auth/invalid-email':
-          errorMessage = 'O formato do e-mail é inválido.';
-          break;
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-        case 'auth/invalid-credential':
-          errorMessage = 'E-mail ou senha incorretos.';
-          break;
-        case 'auth/email-already-in-use':
-          errorMessage = 'Este e-mail já está em uso.';
-          break;
-        case 'auth/weak-password':
-          errorMessage = 'A senha é muito fraca. Use pelo menos 6 caracteres.';
-          break;
-        default:
-          console.error('Erro de autenticação:', error);
-      }
-      toast.error('Erro de Autenticação', { description: errorMessage });
+      toast.error('Erro de Autenticação', { 
+        description: 'Ocorreu um erro. Tente novamente.' 
+      });
     } finally {
       setLoading(false);
     }

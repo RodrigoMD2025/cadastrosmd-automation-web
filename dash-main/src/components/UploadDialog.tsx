@@ -1,32 +1,24 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Upload, AlertTriangle, Database, Loader2 } from "lucide-react";
+import { Upload, AlertTriangle, Database } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://cadastrosmd-automation-web.vercel.app';
 
 interface UploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export default function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
+export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [uploadMode, setUploadMode] = useState<"overwrite" | "append">("overwrite");
+  const [uploadMode, setUploadMode] = useState<"overwrite" | "append">("append");
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      if (!selectedFile.name.match(/\.(xlsx|xls)$/i)) {
-        toast.error("Formato inválido", { description: "Selecione um arquivo Excel (.xlsx ou .xls)." });
-        return;
-      }
-      setFile(selectedFile);
+      setFile(e.target.files[0]);
     }
   };
 
@@ -36,51 +28,19 @@ export default function UploadDialog({ open, onOpenChange }: UploadDialogProps) 
       return;
     }
 
-    if (uploadMode === 'append') {
-      toast.info("Aviso: Modo 'Adicionar' ainda não implementado", {
-        description: "O backend atual sempre substituirá os dados.",
-        duration: 8000,
-      });
-    }
-
     setIsUploading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      toast.info('📤 Enviando arquivo...');
-
-      const response = await fetch(`${API_URL}/api/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido no servidor' }));
-        throw new Error(errorData.error || 'Erro no upload');
-      }
-
-      const data = await response.json();
-
-      toast.success('✅ Upload concluído!', {
-        description: `Arquivo: ${data.fileName}`,
-        action: {
-          label: 'Ver Execução',
-          onClick: () => window.open(data.githubActionsUrl, '_blank'),
-        },
-        duration: 10000,
-      });
-
+    
+    // Simulação de upload - substituir pela lógica real
+    setTimeout(() => {
+      toast.success(
+        uploadMode === "overwrite" 
+          ? "Planilha enviada! Dados anteriores foram apagados." 
+          : "Planilha enviada! Dados adicionados à base existente."
+      );
+      setIsUploading(false);
       setFile(null);
       onOpenChange(false);
-
-    } catch (error) {
-      console.error('Erro no handleUpload:', error);
-      toast.error('❌ Falha no Upload', { description: (error as Error).message });
-    } finally {
-      setIsUploading(false);
-    }
+    }, 2000);
   };
 
   return (
@@ -92,21 +52,24 @@ export default function UploadDialog({ open, onOpenChange }: UploadDialogProps) 
             Upload de Planilha
           </DialogTitle>
           <DialogDescription>
-            Faça upload de uma planilha Excel (.xlsx) com os dados dos cadastros.
+            Faça upload de uma planilha Excel (.xlsx) com os dados dos cadastros
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label htmlFor="file-upload" className="text-sm font-medium">
+            <Label htmlFor="file" className="text-sm font-medium">
               Selecionar Arquivo
             </Label>
-            <Input
-              id="file-upload"
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleFileChange}
-            />
+            <div className="flex items-center gap-2">
+              <input
+                id="file"
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileChange}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
             {file && (
               <p className="text-xs text-muted-foreground">
                 Arquivo selecionado: {file.name}
@@ -119,7 +82,14 @@ export default function UploadDialog({ open, onOpenChange }: UploadDialogProps) 
               <Database className="h-4 w-4" />
               Modo de Importação
             </Label>
-            <RadioGroup defaultValue="overwrite" value={uploadMode} onValueChange={(value) => setUploadMode(value as "overwrite" | "append")}>
+            <RadioGroup value={uploadMode} onValueChange={(value) => setUploadMode(value as "overwrite" | "append")}>
+              <div className="flex items-center space-x-2 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
+                <RadioGroupItem value="append" id="append" />
+                <Label htmlFor="append" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Adicionar aos dados existentes</div>
+                  <div className="text-xs text-muted-foreground">Os novos dados serão adicionados à base atual</div>
+                </Label>
+              </div>
               <div className="flex items-center space-x-2 p-3 rounded-lg border border-destructive/50 hover:bg-destructive/5 transition-colors">
                 <RadioGroupItem value="overwrite" id="overwrite" />
                 <Label htmlFor="overwrite" className="flex-1 cursor-pointer">
@@ -127,14 +97,7 @@ export default function UploadDialog({ open, onOpenChange }: UploadDialogProps) 
                     <AlertTriangle className="h-4 w-4 text-destructive" />
                     Apagar dados atuais e substituir
                   </div>
-                  <div className="text-xs text-muted-foreground">Todos os dados existentes serão removidos (padrão).</div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
-                <RadioGroupItem value="append" id="append" />
-                <Label htmlFor="append" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Adicionar aos dados existentes</div>
-                  <div className="text-xs text-muted-foreground">[Funcionalidade futura] Os novos dados serão adicionados.</div>
+                  <div className="text-xs text-muted-foreground">Todos os dados existentes serão removidos</div>
                 </Label>
               </div>
             </RadioGroup>
@@ -148,7 +111,7 @@ export default function UploadDialog({ open, onOpenChange }: UploadDialogProps) 
           <Button onClick={handleUpload} disabled={!file || isUploading} className="gap-2">
             {isUploading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
                 Enviando...
               </>
             ) : (
