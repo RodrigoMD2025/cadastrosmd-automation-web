@@ -9,8 +9,11 @@ export const config = {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // ✅ CORS seguro - domínio correto do GitHub Pages
+  // ✅ CORS seguro - permite produção e desenvolvimento local
   res.setHeader('Access-Control-Allow-Origin', 'https://rodrigomd2025.github.io');
+  if (req.headers.origin && (req.headers.origin.startsWith('http://localhost:') || req.headers.origin.startsWith('http://127.0.0.1:'))) {
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Vary', 'Origin');
