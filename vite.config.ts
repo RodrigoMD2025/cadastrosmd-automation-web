@@ -5,8 +5,6 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // Configuração para GitHub Pages
-  base: mode === "production" ? "/cadastrosmd-automation-web/" : "/",
   server: {
     host: "::",
     port: 8080,
@@ -15,18 +13,6 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  build: {
-    outDir: "dist",
-    sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ["react", "react-dom"],
-          firebase: ["firebase/app", "firebase/auth", "firebase/functions", "firebase/firestore"],
-        },
-      },
     },
   },
 }));
