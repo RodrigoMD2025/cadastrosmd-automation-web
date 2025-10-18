@@ -10,12 +10,24 @@ export const config = {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // ✅ CORS seguro - permite produção e desenvolvimento local
-  res.setHeader('Access-Control-Allow-Origin', 'https://rodrigomd2025.github.io');
-  if (req.headers.origin && (req.headers.origin.startsWith('http://localhost:') || req.headers.origin.startsWith('http://127.0.0.1:'))) {
-    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+  const origin = req.headers.origin || '';
+  const allowedOrigins = [
+    'https://rodrigomd2025.github.io',
+    'http://localhost:8080',
+    'http://localhost:8081',
+    'http://127.0.0.1:8080',
+    'http://127.0.0.1:8081'
+  ];
+
+  if (allowedOrigins.includes(origin) || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'https://rodrigomd2025.github.io');
   }
+
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Vary', 'Origin');
 
   if (req.method === 'OPTIONS') return res.status(200).end();

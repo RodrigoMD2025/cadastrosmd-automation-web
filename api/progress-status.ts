@@ -3,18 +3,29 @@ import { Pool } from 'pg';
 
 // Função para lidar com cabeçalhos CORS e pre-flight requests
 const allowCors = (fn: (req: VercelRequest, res: VercelResponse) => Promise<void>) => async (req: VercelRequest, res: VercelResponse) => {
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  // A origem do seu frontend no GitHub Pages
-  res.setHeader('Access-Control-Allow-Origin', 'https://rodrigomd2025.github.io');
-  // Permitir localhost para desenvolvimento
-  if (req.headers.origin && new URL(req.headers.origin).hostname === 'localhost') {
-    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+  // ✅ CORS seguro - permite produção e desenvolvimento local
+  const origin = req.headers.origin || '';
+  const allowedOrigins = [
+    'https://rodrigomd2025.github.io',
+    'http://localhost:8080',
+    'http://localhost:8081',
+    'http://127.0.0.1:8080',
+    'http://127.0.0.1:8081'
+  ];
+
+  if (allowedOrigins.includes(origin) || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'https://rodrigomd2025.github.io');
   }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
+  res.setHeader('Vary', 'Origin');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
