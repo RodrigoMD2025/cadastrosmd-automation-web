@@ -23,9 +23,10 @@ const allowCors = (fn: (req: VercelRequest, res: VercelResponse) => Promise<void
   return await fn(req, res);
 };
 
-const handler = async (req: VercelRequest, res: VercelResponse) => {
+const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> => {
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
   }
 
   // As variáveis de ambiente DATABASE_URL e TABELA devem estar configuradas na Vercel
@@ -33,7 +34,8 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
   const tabela = process.env.TABELA;
 
   if (!connectionString || !tabela) {
-    return res.status(500).json({ error: 'Database configuration is missing.' });
+    res.status(500).json({ error: 'Database configuration is missing.' });
+    return;
   }
 
   const pool = new Pool({
