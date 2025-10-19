@@ -16,7 +16,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <BrowserRouter basename="/cadastrosmd-automation-web">
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/*" element={<MainLayout />} />
