@@ -40,16 +40,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const bb = busboy({ headers: req.headers });
-    
+
     let fileBuffer: Buffer;
     let fileName = '';
     let fileSize = 0;
+    let uploadMode = 'append'; // valor padrão
 
     await new Promise<void>((resolve, reject) => {
       bb.on('file', (_name, file, info) => {
         fileName = info.filename;
         const chunks: Buffer[] = [];
-        
+
         file.on('data', (data) => chunks.push(data));
         file.on('end', () => {
           fileBuffer = Buffer.concat(chunks);
@@ -57,15 +58,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       });
 
+      bb.on('field', (name, value) => {
+        if (name === 'uploadMode') {
+          uploadMode = value;
+          console.log('📋 Upload Mode:', uploadMode);
+        }
+      });
+
       bb.on('finish', resolve);
       bb.on('error', reject);
-      
+
       req.pipe(bb);
     });
 
     // Validações
     if (!fileName) return res.status(400).json({ error: 'No file uploaded' });
-    
+
     if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
       return res.status(400).json({ error: 'Only Excel files allowed' });
     }
@@ -105,6 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             blob_url: blob.url,
             upload_id: uploadId,
             file_name: fileName,
+            upload_mode: uploadMode,
           },
         }),
       }

@@ -7,6 +7,7 @@ from tqdm import tqdm
 # Configurações das variáveis de ambiente (GitHub Actions)
 DATABASE_URL = os.getenv('DATABASE_URL')
 TABELA = os.getenv('TABELA', 'cadastros')
+UPLOAD_MODE = os.getenv('UPLOAD_MODE', 'append')  # 'append' ou 'overwrite'
 PLANILHA = 'Emitir.xlsx'  # Nome fixo no GitHub Actions
 
 # Validação
@@ -97,12 +98,17 @@ def upload_planilha():
 if __name__ == "__main__":
     try:
         logging.info("🚀 Iniciando upload para Neon...")
+        logging.info(f"📋 Modo de importação: {UPLOAD_MODE}")
         
         if not verificar_conexao_neon():
             exit(1)
         
-        # No GitHub Actions, sempre limpa a tabela
-        limpar_tabela()
+        # Só limpa a tabela se o modo for 'overwrite'
+        if UPLOAD_MODE == 'overwrite':
+            logging.info("🗑️ Modo OVERWRITE - Limpando tabela antes de importar")
+            limpar_tabela()
+        else:
+            logging.info("➕ Modo APPEND - Adicionando dados sem apagar registros existentes")
         
         sucessos, erros = upload_planilha()
         

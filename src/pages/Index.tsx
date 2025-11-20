@@ -42,26 +42,6 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <div className="container mx-auto px-4 md:px-8 py-8 space-y-8">
-        {/* Ações Principais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Button 
-            onClick={() => setUploadOpen(true)} 
-            className="gap-3 h-14 text-base font-semibold transition-all duration-300 hover:scale-[1.02]" 
-            size="lg"
-          >
-            <Upload className="h-5 w-5" />
-            Fazer Upload de Planilha
-          </Button>
-          <Button
-            variant="success"
-            size="lg"
-            className="gap-3 h-14 text-base font-semibold transition-all duration-300 hover:scale-[1.02]"
-          >
-            <Play className="h-5 w-5" />
-            Iniciar Cadastro
-          </Button>
-        </div>
-
         <UploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />
 
         {/* Dashboard Grid */}

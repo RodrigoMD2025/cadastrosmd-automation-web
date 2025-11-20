@@ -15,6 +15,11 @@ on:
         description: 'Nome original do arquivo'
         required: true
         type: string
+      upload_mode:
+        description: 'Modo de importação (append ou overwrite)'
+        required: false
+        type: string
+        default: 'append'
 
 jobs:
   processar:
@@ -43,6 +48,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TABELA: ${{ secrets.TABELA }}
+          UPLOAD_MODE: ${{ github.event.inputs.upload_mode }}
         run: |
           python scripts/upload_planilha_neon.py
       
