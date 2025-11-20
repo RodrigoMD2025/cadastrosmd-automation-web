@@ -49,6 +49,8 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TABELA: ${{ secrets.TABELA }}
           UPLOAD_MODE: ${{ github.event.inputs.upload_mode }}
+          UPLOAD_ID: ${{ github.event.inputs.upload_id }}
+          FILE_NAME: ${{ github.event.inputs.file_name }}
         run: |
           python scripts/upload_planilha_neon.py
       

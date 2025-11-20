@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { UploadProgressTracker } from '@/components/UploadProgressTracker';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://cadastrosmd-automation-web.vercel.app';
 
@@ -18,6 +19,7 @@ const UploadPage = () => {
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadId, setUploadId] = useState<string | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -87,6 +89,7 @@ const UploadPage = () => {
       if (response.ok) {
         const result = await response.json();
         setUploadStatus('success');
+        setUploadId(result.uploadId); // Salvar o uploadId para rastreamento
         toast.success(result.message || 'Planilha enviada com sucesso!');
       } else {
         const errorData = await response.json();
@@ -109,6 +112,7 @@ const UploadPage = () => {
     setFile(null);
     setUploadStatus('idle');
     setUploadProgress(0);
+    setUploadId(null);
   };
 
   const getStatusIcon = () => {
@@ -318,6 +322,16 @@ const UploadPage = () => {
           </CardContent>
         </Card>
 
+        {/* Processing Progress Tracker */}
+        {uploadId && (
+          <UploadProgressTracker
+            uploadId={uploadId}
+            onComplete={() => {
+              toast.success('Processamento concluído!');
+            }}
+          />
+        )}
+
         {/* Info Card */}
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="pt-6">
@@ -328,7 +342,7 @@ const UploadPage = () => {
                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                   <li>Certifique-se de que a planilha está no formato correto (.xlsx ou .xls)</li>
                   <li>O arquivo será processado automaticamente após o upload</li>
-                  <li>Você pode acompanhar o progresso do processamento na página inicial</li>
+                  <li>Você pode acompanhar o progresso do processamento em tempo real abaixo</li>
                 </ul>
               </div>
             </div>
