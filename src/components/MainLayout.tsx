@@ -14,13 +14,14 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { LogOut, LayoutDashboard, Settings, Upload, Bot } from "lucide-react";
+import { LogOut, LayoutDashboard, Settings, Upload, Bot, Database } from "lucide-react";
 
 import Index from "../pages/Index";
 import Auth from "../pages/Auth";
 import NotFound from "../pages/NotFound";
 import UploadPage from "../pages/UploadPage";
 import SettingsPage from "../pages/SettingsPage";
+import DataTablePage from "../pages/DataTablePage";
 
 const MainLayout = () => {
   const navigate = useNavigate();
@@ -59,6 +60,14 @@ const MainLayout = () => {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
+                <Link to="/dados">
+                  <Database />
+                  Dados
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
                 <Link to="/settings">
                   <Settings />
                   Configurações
@@ -87,6 +96,7 @@ const MainLayout = () => {
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/upload" element={<UploadPage />} />
+          <Route path="/dados" element={<DataTablePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
