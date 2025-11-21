@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { UploadProgressTracker } from '@/components/UploadProgressTracker';
+import { UploadHistoryList } from '@/components/UploadHistoryList';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://cadastrosmd-automation-web.vercel.app';
 
@@ -20,6 +21,7 @@ const UploadPage = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadId, setUploadId] = useState<string | null>(null);
+  const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -328,6 +330,8 @@ const UploadPage = () => {
             uploadId={uploadId}
             onComplete={() => {
               toast.success('Processamento concluído!');
+              // Refresh history list
+              setHistoryRefreshTrigger(prev => prev + 1);
             }}
           />
         )}
@@ -348,6 +352,11 @@ const UploadPage = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Upload History */}
+        <div className="mt-8">
+          <UploadHistoryList refreshTrigger={historyRefreshTrigger} />
+        </div>
       </div>
     </div>
   );
