@@ -42,10 +42,16 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
 
                 if (!response.ok) {
                     if (response.status === 404) {
-                        // Upload ainda não iniciou o processamento
+                        // Upload ainda não iniciou o processamento - isso é normal
+                        // Não marcar como erro, apenas aguardar
+                        setProgress(null);
+                        setIsLoading(true);
                         return;
                     }
-                    throw new Error('Failed to fetch progress');
+
+                    // Outros erros
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
                 }
 
                 const data: UploadProgressData = await response.json();
@@ -85,7 +91,10 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
                 <CardContent className="pt-6">
                     <div className="flex items-center gap-3">
                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                        <span className="text-sm text-muted-foreground">Aguardando início do processamento...</span>
+                        <div className="flex-1">
+                            <span className="text-sm text-muted-foreground">Aguardando início do processamento...</span>
+                            <p className="text-xs text-muted-foreground mt-1">Upload ID: {uploadId}</p>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -186,7 +195,7 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
                     <Progress
                         value={progress.percentage}
                         className={`h-3 ${progress.status === 'completed' ? '[&>div]:bg-green-600' :
-                                progress.status === 'failed' ? '[&>div]:bg-destructive' : ''
+                            progress.status === 'failed' ? '[&>div]:bg-destructive' : ''
                             }`}
                     />
                 </div>
