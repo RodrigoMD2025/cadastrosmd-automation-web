@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { UploadProgressTracker } from '@/components/UploadProgressTracker';
 import { UploadHistoryList } from '@/components/UploadHistoryList';
+import { useUploadContext } from '@/contexts/UploadContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://cadastrosmd-automation-web.vercel.app';
 
@@ -22,6 +24,15 @@ const UploadPage = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadId, setUploadId] = useState<string | null>(null);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
+
+  const { setActiveUpload, clearUpload, uploadState } = useUploadContext();
+
+  // Auto-resume: Check if there's an active upload on mount
+  useEffect(() => {
+    if (uploadState.uploadId && uploadState.isProcessing) {
+      setUploadId(uploadState.uploadId);
+    }
+  }, [uploadState.uploadId, uploadState.isProcessing]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -91,7 +102,10 @@ const UploadPage = () => {
       if (response.ok) {
         const result = await response.json();
         setUploadStatus('success');
-        setUploadId(result.uploadId); // Salvar o uploadId para rastreamento
+        const newUploadId = result.uploadId;
+        setUploadId(newUploadId);
+        // Save to context + localStorage
+        setActiveUpload(newUploadId, file.name);
         toast.success(result.message || 'Planilha enviada com sucesso!');
       } else {
         const errorData = await response.json();
@@ -115,6 +129,7 @@ const UploadPage = () => {
     setUploadStatus('idle');
     setUploadProgress(0);
     setUploadId(null);
+    clearUpload(); // Clear from context + localStorage
   };
 
   const getStatusIcon = () => {
@@ -155,6 +170,17 @@ const UploadPage = () => {
             Faça upload de planilhas Excel para processamento automático
           </p>
         </div>
+
+        {/* Resume Alert */}
+        {uploadState.uploadId && uploadState.isProcessing && !file && (
+          <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertTitle className="text-blue-900 dark:text-blue-100">Upload em andamento</AlertTitle>
+            <AlertDescription className="text-blue-800 dark:text-blue-200">
+              Continuando processamento de "{uploadState.fileName}"
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Main Upload Card */}
         <Card className="border-2 shadow-lg">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, XCircle, Loader2, Clock, Database } from 'lucide-react';
+import { useUploadContext } from '@/contexts/UploadContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://cadastrosmd-automation-web.vercel.app';
 
@@ -32,6 +33,7 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
     const [progress, setProgress] = useState<UploadProgressData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { clearUpload } = useUploadContext();
 
     useEffect(() => {
         if (!uploadId) return;
@@ -60,8 +62,11 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
                 setError(null);
 
                 // Se completou, chamar callback e parar polling
-                if (data.is_complete && onComplete) {
-                    onComplete();
+                if (data.is_complete) {
+                    clearUpload(); // Clear from localStorage
+                    if (onComplete) {
+                        onComplete();
+                    }
                 }
             } catch (err) {
                 console.error('Error fetching progress:', err);
