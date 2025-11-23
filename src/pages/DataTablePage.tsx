@@ -119,7 +119,14 @@ const DataTablePage = () => {
                 exportColumns.join(','), // Header
                 ...exportData.map((row: any) =>
                     exportColumns.map(col => {
-                        const value = row[col] ?? '';
+                        let value = row[col] ?? '';
+
+                        // Format CADASTRADO timestamp
+                        if (col === 'CADASTRADO' && value) {
+                            const date = new Date(value);
+                            value = `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+                        }
+
                         // Escape quotes and wrap in quotes if contains comma
                         return typeof value === 'string' && value.includes(',')
                             ? `"${value.replace(/"/g, '""')}"`
@@ -159,7 +166,17 @@ const DataTablePage = () => {
             // Prepare data for Excel
             const wsData = [
                 exportColumns, // Header
-                ...exportData.map((row: any) => exportColumns.map(col => row[col] ?? ''))
+                ...exportData.map((row: any) => exportColumns.map(col => {
+                    const value = row[col];
+
+                    // Format CADASTRADO timestamp
+                    if (col === 'CADASTRADO' && value) {
+                        const date = new Date(value);
+                        return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+                    }
+
+                    return value ?? '';
+                }))
             ];
 
             const ws = XLSX.utils.aoa_to_sheet(wsData);
