@@ -464,39 +464,37 @@ const UploadPage = () => {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            <div className="flex gap-3">
-              <Database className="h-5 w-5 text-primary flex-shrink-0" />
-              <div className="space-y-1 text-sm">
-                <p className="font-medium">Processamento Automático</p>
-                <p className="text-muted-foreground">
-                  Assim que o upload for concluído, o sistema iniciará automaticamente a validação e importação dos dados.
-                </p>
+                <div className="flex gap-3 pt-4 border-t mt-4">
+                  <Database className="h-5 w-5 text-primary flex-shrink-0" />
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium">Processamento Automático</p>
+                    <p className="text-muted-foreground">
+                      Assim que o upload for concluído, o sistema iniciará automaticamente a validação e importação dos dados.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-        </div >
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-  {/* Processing Progress Tracker - Full Width */ }
-{
-  uploadId && (
-    <UploadProgressTracker
-      uploadId={uploadId}
-      onComplete={handleUploadComplete}
-    />
-  )
-}
+      {/* Processing Progress Tracker - Full Width */}
+      {
+        uploadId && (
+          <UploadProgressTracker
+            uploadId={uploadId}
+            onComplete={handleUploadComplete}
+          />
+        )
+      }
 
-{/* Upload History */ }
-<div className="mt-8">
-  <UploadHistoryList refreshTrigger={historyRefreshTrigger} />
-</div>
-      </div >
+      {/* Upload History */}
+      <div className="mt-8">
+        <UploadHistoryList refreshTrigger={historyRefreshTrigger} />
+      </div>
+    </div >
     </div >
   );
 };
