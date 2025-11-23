@@ -467,37 +467,37 @@ const UploadPage = () => {
               </CardContent>
             </Card>
 
-            {/* Info Card - Moved to right column */}
-            <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="pt-6">
-                <div className="flex gap-3">
-                  <Database className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1 text-sm">
-                    <p className="font-semibold">Processamento Automático</p>
-                    <p className="text-muted-foreground">
-                      Assim que o upload for concluído, o sistema iniciará automaticamente a validação e importação dos dados para a fila de processamento.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex gap-3">
+              <Database className="h-5 w-5 text-primary flex-shrink-0" />
+              <div className="space-y-1 text-sm">
+                <p className="font-medium">Processamento Automático</p>
+                <p className="text-muted-foreground">
+                  Assim que o upload for concluído, o sistema iniciará automaticamente a validação e importação dos dados.
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* Processing Progress Tracker - Full Width */}
-        {uploadId && (
-          <UploadProgressTracker
-            uploadId={uploadId}
-            onComplete={handleUploadComplete}
-          />
-        )}
-
-        {/* Upload History */}
-        <div className="mt-8">
-          <UploadHistoryList refreshTrigger={historyRefreshTrigger} />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
+        </div >
+
+  {/* Processing Progress Tracker - Full Width */ }
+{
+  uploadId && (
+    <UploadProgressTracker
+      uploadId={uploadId}
+      onComplete={handleUploadComplete}
+    />
+  )
+}
+
+{/* Upload History */ }
+<div className="mt-8">
+  <UploadHistoryList refreshTrigger={historyRefreshTrigger} />
+</div>
+      </div >
+    </div >
   );
 };
 
