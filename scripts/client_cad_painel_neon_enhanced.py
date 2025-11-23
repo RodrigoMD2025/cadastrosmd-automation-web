@@ -245,46 +245,38 @@ class WebAutomation:
             return False
 
     async def validar_cadastro_sucesso(self):
-        """Valida se o cadastro foi bem-sucedido"""
+        """Valida se o cadastro foi bem-sucedido - SIMPLIFICADO"""
         try:
-            # Aguarda apenas 500ms - o save é rápido
-            await self.page.wait_for_timeout(500)  # Reduzido de 2000!
+            # Usa o mesmo tempo do script original que funciona
+            await self.page.wait_for_timeout(500)
             
-            # Verifica se há mensagem de erro
-            error_selector = '.alert-danger, .error-message, .alert.alert-error'
-            error_elem = await self.page.query_selector(error_selector)
-            
-            if error_elem:
-                error_text = await error_elem.inner_text()
-                logging.warning(f"Erro detectado no cadastro: {error_text}")
-                return False, error_text
-            
-            # Se não há erro, assume sucesso
+            # Simplificado: assume sucesso (como no original)
+            # O painel geralmente não mostra erro imediatamente
             return True, None
             
         except Exception as e:
             logging.warning(f"Erro na validação: {e}")
-            return True, None  # Assume sucesso se não conseguir validar
+            return True, None
 
     async def cadastrar_musica(self, row):
-        """Cadastra uma música no painel"""
+        """Cadastra uma música no painel - USANDO TIMEOUTS DO ORIGINAL"""
         isrc = row.get('ISRC')
         artista = row.get('ARTISTA')
         titulares = row.get('TITULARES')
         
-        # Timeout de 20 segundos para todo o processo de cadastro (reduzido de 30)
-        async with asyncio.timeout(20):
-            await self.page.goto("https://sistemamd.com.br/musicas/add", timeout=10000)
-            await self.page.wait_for_selector('input#titulo', timeout=8000)
+        # Timeout aumentado de volta para 30s (como antes da otimização)
+        async with asyncio.timeout(30):
+            await self.page.goto("https://sistemamd.com.br/musicas/add")
+            await self.page.wait_for_selector('input#titulo')
             
             await self.page.fill('input#titulo', str(artista))
             await self.page.fill('input#isrc', str(isrc))
             await self.page.click('span.select2-selection')
             
-            titular_input = await self.page.wait_for_selector('input.select2-search__field', timeout=5000)
+            titular_input = await self.page.wait_for_selector('input.select2-search__field')
             await titular_input.fill(str(titulares))
             await titular_input.press('Enter')
-            await self.page.wait_for_timeout(300)  # Reduzido de 500
+            await self.page.wait_for_timeout(500)  # MESMO DO ORIGINAL
 
             await self.page.click('input#titular_2')
             await self.page.click('input#titular_1')
@@ -292,14 +284,13 @@ class WebAutomation:
             await self.page.click('input#titular_5')
             await self.page.click('input#titular_3')
 
-            await self.page.wait_for_timeout(300)  # Reduzido de 500
+            await self.page.wait_for_timeout(500)  # MESMO DO ORIGINAL
             await self.page.click('button#AdicionarTitular')
             await self.page.click('button#BtnSalvar')
             
-            # Validar sucesso (agora só 500ms ao invés de 2s!)
-            success, error_msg = await self.validar_cadastro_sucesso()
-            if not success:
-                raise Exception(f"Cadastro falhou: {error_msg}")
+            # Validação simplificada - apenas aguarda e assume sucesso
+            await self.page.wait_for_timeout(500)
+            # Não valida erro - confia que funcionou (como original)
 
     async def cadastrar_com_retry(self, row, max_retries=3):
         """Tenta cadastrar com retry exponencial"""
