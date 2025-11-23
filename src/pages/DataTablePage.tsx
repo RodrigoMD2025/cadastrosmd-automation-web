@@ -11,7 +11,7 @@ import {
     TableHeader,
     TableRow
 } from '@/components/ui/table';
-import { Search, RefreshCw, Loader2, Database, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, RefreshCw, Loader2, Database, ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://cadastrosmd-automation-web.vercel.app';
@@ -70,7 +70,12 @@ const DataTablePage = () => {
 
             const result: CadastrosData = await response.json();
             setData(result.data);
-            setColumns(result.columns);
+
+            // Filtrar colunas indesejadas (# e id)
+            const filteredColumns = result.columns.filter(col =>
+                !['#', 'id'].includes(col.toLowerCase())
+            );
+            setColumns(filteredColumns);
             setTotal(result.total);
         } catch (err) {
             console.error('Error fetching data:', err);
@@ -185,7 +190,6 @@ const DataTablePage = () => {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead className="w-12">#</TableHead>
                                                 {columns.map((column) => (
                                                     <TableHead key={column} className="min-w-[150px]">
                                                         {column}
@@ -196,14 +200,30 @@ const DataTablePage = () => {
                                         <TableBody>
                                             {data.map((row, index) => (
                                                 <TableRow key={index}>
-                                                    <TableCell className="font-medium text-muted-foreground">
-                                                        {offset + index + 1}
-                                                    </TableCell>
                                                     {columns.map((column) => (
                                                         <TableCell key={column}>
-                                                            {row[column] !== null && row[column] !== undefined
-                                                                ? String(row[column])
-                                                                : '-'}
+                                                            {column === 'PAINEL_NEW' ? (
+                                                                row[column] === 'Cadastro OK' ? (
+                                                                    <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                                                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                                                        Cadastrado
+                                                                    </Badge>
+                                                                ) : row[column] === 'Erro no Cadastro' ? (
+                                                                    <Badge variant="destructive">
+                                                                        <XCircle className="h-3 w-3 mr-1" />
+                                                                        Erro
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <Badge variant="secondary">
+                                                                        <Clock className="h-3 w-3 mr-1" />
+                                                                        Pendente
+                                                                    </Badge>
+                                                                )
+                                                            ) : (
+                                                                row[column] !== null && row[column] !== undefined
+                                                                    ? String(row[column])
+                                                                    : '-'
+                                                            )}
                                                         </TableCell>
                                                     ))}
                                                 </TableRow>
