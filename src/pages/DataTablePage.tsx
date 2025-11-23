@@ -220,22 +220,19 @@ const DataTablePage = () => {
                                                                     </Badge>
                                                                 )
                                                             ) : column === 'CADASTRADO' ? (
-                                                                // Formatação especial para timestamp
+                                                                // Formatação: DD-MM-YYYY HH:MM:SS
                                                                 row[column] ? (
-                                                                    <div className="text-sm">
-                                                                        <div className="font-medium">
-                                                                            {new Date(row[column]).toLocaleDateString('pt-BR', {
-                                                                                day: '2-digit',
-                                                                                month: '2-digit',
-                                                                                year: 'numeric'
-                                                                            })}
-                                                                        </div>
-                                                                        <div className="text-xs text-muted-foreground">
-                                                                            {new Date(row[column]).toLocaleTimeString('pt-BR', {
-                                                                                hour: '2-digit',
-                                                                                minute: '2-digit'
-                                                                            })}
-                                                                        </div>
+                                                                    <div className="text-sm font-mono text-muted-foreground">
+                                                                        {(() => {
+                                                                            const date = new Date(row[column]);
+                                                                            const day = String(date.getDate()).padStart(2, '0');
+                                                                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                                                                            const year = date.getFullYear();
+                                                                            const hours = String(date.getHours()).padStart(2, '0');
+                                                                            const minutes = String(date.getMinutes()).padStart(2, '0');
+                                                                            const seconds = String(date.getSeconds()).padStart(2, '0');
+                                                                            return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+                                                                        })()}
                                                                     </div>
                                                                 ) : (
                                                                     <span className="text-muted-foreground">-</span>

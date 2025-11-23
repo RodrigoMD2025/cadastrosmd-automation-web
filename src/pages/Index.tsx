@@ -254,7 +254,7 @@ const Index = () => {
               // PROVISIONING: Aguardando GitHub Actions preparar ambiente
               <div className="mt-2 space-y-2">
                 <p className="text-sm">
-                  Preparando ambiente de execução... Isso pode levar alguns segundos.
+                  Preparando ambiente de execução... Isso pode levar alguns minutos.
                 </p>
                 <Progress value={0} className="h-2 animate-pulse" />
               </div>
@@ -467,7 +467,7 @@ const Index = () => {
                   startAutomation.mutate();
                 }}
                 disabled={!canStartAutomation || startAutomation.isPending}
-                className="w-full"
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
                 size="lg"
               >
                 {startAutomation.isPending ? (
