@@ -373,17 +373,19 @@ const UploadPage = () => {
               </CardContent>
             </Card>
 
-            {/* Processing Progress Tracker */}
+
+          </div>
+
+          {/* Right Column: Excel Template Example */}
+          <div className="space-y-6">
+            {/* Processing Progress Tracker - Moved here */}
             {uploadId && (
               <UploadProgressTracker
                 uploadId={uploadId}
                 onComplete={handleUploadComplete}
               />
             )}
-          </div>
 
-          {/* Right Column: Excel Template Example */}
-          <div className="space-y-6">
             <Card className="border-2 border-primary/10 shadow-md bg-white/50 dark:bg-slate-950/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, XCircle, Loader2, Clock, Database } from 'lucide-react';
@@ -35,8 +35,15 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
     const [error, setError] = useState<string | null>(null);
     const { clearUpload } = useUploadContext();
 
+    const onCompleteCalledRef = useRef<string | null>(null);
+
     useEffect(() => {
         if (!uploadId) return;
+
+        // Reset ref if uploadId changes
+        if (onCompleteCalledRef.current !== uploadId) {
+            onCompleteCalledRef.current = null;
+        }
 
         const fetchProgress = async () => {
             try {
@@ -44,14 +51,10 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
 
                 if (!response.ok) {
                     if (response.status === 404) {
-                        // Upload ainda não iniciou o processamento - isso é normal
-                        // Não marcar como erro, apenas aguardar
                         setProgress(null);
                         setIsLoading(true);
                         return;
                     }
-
-                    // Outros erros
                     const errorData = await response.json().catch(() => ({}));
                     throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
                 }
@@ -64,7 +67,10 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
                 // Se completou, chamar callback e parar polling
                 if (data.is_complete) {
                     clearUpload(); // Clear from localStorage
-                    if (onComplete) {
+
+                    // Call onComplete only if not already called for this uploadId
+                    if (onComplete && onCompleteCalledRef.current !== uploadId) {
+                        onCompleteCalledRef.current = uploadId;
                         onComplete();
                     }
                 }
@@ -78,7 +84,6 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
         // Primeira busca imediata
         fetchProgress();
 
-
         // Polling a cada 2 segundos enquanto não completou
         const interval = setInterval(() => {
             if (progress?.is_complete) {
@@ -89,7 +94,7 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
         }, 2000);
 
         return () => clearInterval(interval);
-    }, [uploadId, onComplete]); // Removed progress?.is_complete from deps to prevent loop
+    }, [uploadId, onComplete, clearUpload]);
 
 
     if (isLoading) {
