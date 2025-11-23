@@ -1,0 +1,7 @@
+asyncio
+pandas
+psycopg2-binary
+playwright
+requests
+python-dotenv
+tqdm
