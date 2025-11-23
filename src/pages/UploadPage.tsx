@@ -474,27 +474,26 @@ const UploadPage = () => {
                     </p>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
 
-      {/* Processing Progress Tracker - Full Width */}
-      {
-        uploadId && (
-          <UploadProgressTracker
-            uploadId={uploadId}
-            onComplete={handleUploadComplete}
-          />
-        )
-      }
+        {/* Processing Progress Tracker - Full Width */}
+        {
+          uploadId && (
+            <UploadProgressTracker
+              uploadId={uploadId}
+              onComplete={handleUploadComplete}
+            />
+          )
+        }
 
-      {/* Upload History */}
-      <div className="mt-8">
-        <UploadHistoryList refreshTrigger={historyRefreshTrigger} />
-      </div>
-    </div >
+        {/* Upload History */}
+        <div className="mt-8">
+          <UploadHistoryList refreshTrigger={historyRefreshTrigger} />
+        </div>
+      </div >
     </div >
   );
 };
