@@ -381,9 +381,8 @@ class WebAutomation:
             
             self.total_processed += 1
             
-            # Atualiza progresso a cada 5 registros
-            if self.total_processed % 5 == 0:
-                self.atualizar_progresso()
+            # Atualiza progresso a cada registro para sincronizar com KPI cards
+            self.atualizar_progresso()
         
         # Segunda passagem - retry dos que falharam
         if self.failed_records:
