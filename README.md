@@ -1,165 +1,461 @@
-# 🤖 Painel de Automação de Cadastros Musicais
+# 🎵 Procastneitor Bot - Sistema de Automação de Cadastros Musicais
 
-Cansado de cadastrar músicas manualmente, uma por uma? Este projeto é a sua solução! ✨
+> **Automação inteligente para cadastro em massa de músicas no MusicDelivery com processamento paralelo e monitoramento em tempo real.**
 
-Ele é um painel web simples e elegante que automatiza todo o trabalho pesado. Basta fazer o upload de uma planilha Excel com os dados das suas músicas e, com um clique, um robô faz todo o cadastro para você no sistema externo. Simples assim!
-
----
-
-## 🎯 O Que o Projeto Faz?
-
--   📥 **Upload Simplificado:** Arraste e solte sua planilha Excel (`.xlsx`) com todos os dados das músicas diretamente na interface web.
-
--   ⚙️ **Processamento Inteligente:** O sistema envia sua planilha de forma segura para a nuvem, onde os dados são lidos e preparados para o cadastro.
-
--   🚀 **Cadastro em Massa com Um Clique:** Aperte o botão "Executar Automação" e deixe a mágica acontecer! Um robô inteligente (Playwright) abre o sistema, preenche todos os formulários e cadastra suas músicas automaticamente.
-
--   ⚡ **Performance Otimizada:** Se você enviar centenas ou milhares de músicas, o sistema se divide em várias "máquinas" que trabalham em paralelo para cadastrar tudo muito mais rápido.
-
--   📊 **Acompanhamento Fácil:** A interface oferece links diretos para você acompanhar o progresso e ver os logs de cada etapa da automação em tempo real.
+[![Deploy](https://img.shields.io/badge/deploy-vercel-black)](https://vercel.com)
+[![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-blue)](https://github.com/features/actions)
+[![Database](https://img.shields.io/badge/database-Neon-green)](https://neon.tech)
 
 ---
 
-## 🤔 Como Funciona? (A Mágica por Trás das Cortinas)
+## 📋 Índice
 
-O fluxo é desenhado para ser seguro e eficiente, sem que você precise se preocupar com detalhes técnicos:
-
-**Você (Interface Web) 💻 ➡ Vercel Serverless Function ☁️ ➡ Vercel Blob 📦 ➡ GitHub Actions 🧙‍♂️ ➡ Banco de Dados (Neon) 🗄️ ➡ Robô (Playwright) 🤖**
-
-1.  **Interface Web:** É onde você interage, faz o upload e dispara a automação.
-2.  **Vercel Serverless Function:** Um pequeno "backend" gratuito que recebe seu arquivo, armazena no Vercel Blob e dispara o GitHub Actions.
-3.  **Vercel Blob:** Armazenamento de objetos gratuito e seguro para suas planilhas.
-4.  **GitHub Actions:** É o "cérebro" do projeto. Ele orquestra todo o processo na nuvem, de forma segura, sem expor nenhuma senha.
-5.  **Banco de Dados Neon:** Armazena temporariamente os dados da sua planilha, pronto para o robô usar.
-6.  **Robô Playwright:** O trabalhador incansável que realiza os cadastros no sistema externo.
+- [Visão Geral](#-visão-geral)
+- [Funcionalidades](#-funcionalidades)
+- [Arquitetura](#-arquitetura)
+- [Tecnologias](#-tecnologias)
+- [Configuração](#-configuração)
+- [Uso](#-uso)
+- [Performance](#-performance)
+- [Troubleshooting](#-troubleshooting)
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## 🎯 Visão Geral
 
--   **Frontend**: React, Vite, TypeScript, Tailwind CSS
--   **Backend (Serverless)**: Vercel Serverless Functions (Node.js)
--   **Armazenamento**: Vercel Blob
--   **Automação**: GitHub Actions, Python
--   **Banco de Dados**: Neon (PostgreSQL)
--   **Web Scraping**: Playwright
+O **Procastneitor Bot** é um sistema completo de automação para cadastro em massa de músicas. Desenvolvido para eliminar o trabalho manual repetitivo, o sistema processa centenas ou milhares de cadastros automaticamente, com:
+
+- ⚡ **Processamento paralelo dinâmico** (1-5 máquinas simultâneas)
+- 📊 **Dashboard em tempo real** com KPIs e progresso
+- 🕐 **ETA inteligente** (tempo estimado de conclusão)
+- 📤 **Upload via drag-and-drop** de planilhas Excel
+- 🔄 **Sistema de retry automático** para erros
+- 📈 **Exportação de dados** (CSV, Excel, PDF)
+- 🌐 **100% gratuito** usando tier free de serviços cloud
 
 ---
 
-## ⚙️ Como Configurar e Executar o Projeto
+## ✨ Funcionalidades
 
-Siga os passos abaixo para ter o painel rodando na sua máquina e a automação funcionando.
+### 1. Upload de Planilhas
+- Interface drag-and-drop intuitiva
+- Suporte para `.xlsx` e `.xls`
+- Validação automática de formato
+- Preview do modelo de planilha
+- Dois modos: **Adicionar** ou **Substituir** dados
 
-### 1️⃣ Crie seu Projeto na Vercel
+### 2. Processamento Paralelo Dinâmico
+Escalonamento automático baseado no volume:
+- **≤100 registros**: 1 máquina
+- **101-200 registros**: 2 máquinas
+- **201-300 registros**: 3 máquinas
+- **301-400 registros**: 4 máquinas
+- **≥401 registros**: 5 máquinas (máximo)
 
-Isso irá hospedar as funções serverless que intermediam o frontend e o GitHub Actions.
+**Ganho de Performance**: Redução de até **80% no tempo total** para grandes lotes.
 
--   Acesse [https://vercel.com](https://vercel.com) e faça login com o GitHub.
--   Crie um **New Project** e importe seu repositório `RodrigoMD2025/cadastrosmd-automation-web`.
--   A Vercel fará um deploy inicial. Anote a URL do seu projeto Vercel (ex: `https://seu-projeto.vercel.app`).
+### 3. Dashboard de Monitoramento
+- **KPIs em tempo real**: Total, Concluídos, Pendentes, Erros
+- **Progresso visual**: Barra de progresso com porcentagem
+- **ETA (Estimated Time of Arrival)**: Tempo restante calculado dinamicamente
+- **Status do sistema**: Conectividade e health checks
+- **Histórico de uploads**: Lista completa com timestamps
 
-### 2️⃣ Configure Environment Variables na Vercel
+### 4. Visualização de Dados
+- **DataTable interativa** com ordenação e busca
+- **Status por registro**: ✅ Sucesso, ❌ Erro, ⏰ Pendente
+- **Timestamps formatados**: DD-MM-YYYY HH:MM:SS
+- **Exportação**: CSV, Excel, PDF com formatação automática
 
-Estas variáveis são essenciais para suas funções Vercel se comunicarem com o GitHub.
+### 5. Gerenciamento de Erros
+- **Detecção automática** de falhas durante cadastro
+- **Sistema de retry** com limite configurável
+- **Lista de erros detalhada** com tipo e mensagem
+- **Retry manual** via interface
 
--   No seu Dashboard da Vercel, selecione seu projeto.
--   Vá em **Settings > Environment Variables**.
--   Adicione as seguintes variáveis:
-    -   `GITHUB_TOKEN`: Seu Personal Access Token (PAT) do GitHub com permissão `workflow`.
-    -   `GITHUB_REPO`: O nome do seu repositório no formato `usuario/repositorio` (ex: `RodrigoMD2025/cadastrosmd-automation-web`).
-    -   `BLOB_READ_WRITE_TOKEN`: Este é gerado automaticamente pela Vercel quando você usa `@vercel/blob`. Não precisa criar manualmente.
+---
 
-### 3️⃣ Configure os Segredos no Repositório GitHub
+## 🏗️ Arquitetura
 
-Estes são os dados sensíveis que o robô usará. Eles ficam guardados de forma segura no GitHub.
+### Fluxo de Dados
 
--   No seu repositório do GitHub, vá para **Settings > Secrets and variables > Actions**.
--   Clique em **"New repository secret"** para cada uma das variáveis abaixo:
-    -   `DATABASE_URL`: A URL de conexão do seu banco de dados Neon.
-    -   `TABELA`: O nome da tabela onde os dados serão salvos (ex: `cadastros`).
-    -   `LOGIN_USERNAME`: O usuário de login do sistema onde o robô vai cadastrar.
-    -   `LOGIN_PASSWORD`: A senha de login do sistema.
-    -   `TELEGRAM_TOKEN` (Opcional): Se quiser receber notificações no Telegram.
-    -   `TELEGRAM_CHAT_ID` (Opcional): O ID do seu chat no Telegram.
+```
+┌─────────────┐      ┌──────────────┐      ┌─────────────┐
+│   Browser   │─────▶│    Vercel    │─────▶│ Vercel Blob │
+│  (React)    │      │  Serverless  │      │   Storage   │
+└─────────────┘      └──────────────┘      └─────────────┘
+                              │
+                              ▼
+                     ┌──────────────┐
+                     │    GitHub    │
+                     │   Actions    │◀─────┐
+                     └──────────────┘      │
+                              │            │
+                     ┌────────▼────────┐   │
+                     │  Neon Database  │───┘
+                     │  (PostgreSQL)   │
+                     └─────────────────┘
+                              │
+                     ┌────────▼────────┐
+                     │   Playwright    │
+                     │  (Headless)     │
+                     └─────────────────┘
+                              │
+                              ▼
+                     ┌─────────────────┐
+                     │  MusicDelivery  │
+                     │    (Target)     │
+                     └─────────────────┘
+```
 
-### 4️⃣ Atualize a URL da API no Frontend
+### Componentes
 
-O frontend precisa saber onde encontrar suas funções Vercel.
+#### **Frontend (React + Vite)**
+- Interface responsiva com Tailwind CSS
+- Componentes modulares reutilizáveis
+- Estado global com React Query
+- Notificações com Sonner (toast)
 
--   Edite os arquivos `src/components/UploadDialog.tsx` e `src/components/PlaywrightTrigger.tsx`.
--   Substitua a constante `API_URL` (que está como `'https://YOUR_VERCEL_PROJECT_URL/api'`) pela URL real do seu projeto Vercel, seguida de `/api`.
-    *   **Exemplo:** Se a URL do seu projeto Vercel for `https://meu-projeto.vercel.app`, a `API_URL` será `https://meu-projeto.vercel.app/api`.
+#### **Backend (Vercel Serverless)**
+- `/api/upload`: Recebe e armazena planilhas
+- `/api/automation/start`: Inicia processamento com N jobs
+- `/api/automation/status`: Status em tempo real
+- `/api/automation/progress`: Progresso por upload_id
+- `/api/upload-history`: Histórico de uploads
 
-### 5️⃣ Instale as Dependências do Projeto (Localmente)
+#### **Automação (GitHub Actions)**
+- Workflow `automacao-cadastros.yml`
+- Inputs: `run_id`, `batch_size`, `job_index`, `total_jobs`
+- Timeout: 6 horas máximo
+- Logs persistentes (30 dias)
 
-Abra um terminal na pasta do projeto e rode o comando para instalar as novas dependências:
+#### **Database (Neon PostgreSQL)**
+Tabelas principais:
+- `cadastros`: Registros de músicas
+- `automation_progress`: Tracking de runs
+- `automation_errors`: Log de erros
+- `upload_history`: Histórico de uploads
 
+#### **Bot (Python + Playwright)**
+- Login automatizado
+- Preenchimento de formulários
+- Tratamento de erros
+- Atualização de progresso a cada registro
+- Particionamento via modulo matemático
+
+---
+
+## 🛠️ Tecnologias
+
+### Frontend
+- **React 18** - UI library
+- **TypeScript** - Type safety
+- **Vite** - Build tool
+- **Tailwind CSS** - Styling
+- **shadcn/ui** - Component library
+- **React Query** - Server state
+- **Recharts** - Gráficos
+
+### Backend
+- **Vercel Serverless Functions** - Node.js
+- **Vercel Blob** - Object storage
+- **GitHub REST API** - Workflow dispatch
+
+### Automação
+- **Python 3.11**
+- **Playwright** - Web automation
+- **psycopg2** - PostgreSQL driver
+- **pandas** - Data manipulation
+- **tqdm** - Progress bars
+
+### Infrastructure
+- **Neon** - Serverless PostgreSQL
+- **GitHub Actions** - CI/CD + Compute
+- **GitHub Pages** - Static hosting
+
+---
+
+## ⚙️ Configuração
+
+### 1. Pré-requisitos
+- Conta GitHub
+- Conta Vercel
+- Conta Neon (PostgreSQL)
+- Node.js 18+
+- npm ou yarn
+
+### 2. Clone do Repositório
 ```bash
+git clone https://github.com/RodrigoMD2025/cadastrosmd-automation-web.git
+cd cadastrosmd-automation-web
 npm install
 ```
 
-### 6️⃣ Execute o Projeto Localmente!
+### 3. Banco de Dados (Neon)
 
-Para iniciar o painel localmente:
+Crie um projeto no [Neon](https://neon.tech) e execute o schema:
 
-```bash
-npm run dev
+```sql
+-- Tabela principal de cadastros
+CREATE TABLE cadastros (
+    id SERIAL PRIMARY KEY,
+    "ISRC" VARCHAR(12),
+    "ARTISTA" TEXT,
+    "TITULARES" TEXT,
+    "PAINEL_NEW" VARCHAR(50),
+    "CADASTRADO" TIMESTAMP
+);
+
+-- Tabela de progresso de automação
+CREATE TABLE automation_progress (
+    run_id VARCHAR(50) PRIMARY KEY,
+    status VARCHAR(20),
+    total_records INTEGER,
+    processed_records INTEGER DEFAULT 0,
+    success_count INTEGER DEFAULT 0,
+    error_count INTEGER DEFAULT 0,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_complete BOOLEAN DEFAULT FALSE
+);
+
+-- Tabela de erros
+CREATE TABLE automation_errors (
+    id SERIAL PRIMARY KEY,
+    run_id VARCHAR(50),
+    isrc VARCHAR(12),
+    artista TEXT,
+    error_type VARCHAR(100),
+    error_message TEXT,
+    retry_count INTEGER DEFAULT 0,
+    max_retries INTEGER DEFAULT 3,
+    resolved BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de histórico de uploads
+CREATE TABLE upload_history (
+    upload_id VARCHAR(50) PRIMARY KEY,
+    filename TEXT,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_records INTEGER,
+    processed_records INTEGER DEFAULT 0,
+    success_count INTEGER DEFAULT 0,
+    error_count INTEGER DEFAULT 0,
+    is_complete BOOLEAN DEFAULT FALSE
+);
 ```
 
-🎉 Pronto! A aplicação estará rodando localmente e pronta para ser usada.
+### 4. Variáveis de Ambiente
+
+#### **Vercel (Project Settings → Environment Variables)**
+```bash
+GITHUB_TOKEN=ghp_xxxxxxxxxxxx  # Personal Access Token (workflow scope)
+GITHUB_REPO=RodrigoMD2025/cadastrosmd-automation-web
+BLOB_READ_WRITE_TOKEN=vercel_blob_rw_xxxxx  # Auto-generated
+```
+
+#### **GitHub (Settings → Secrets → Actions)**
+```bash
+DATABASE_URL=postgresql://user:pass@host/db
+TABELA=cadastros
+LOGIN_USERNAME=seu_usuario
+LOGIN_PASSWORD=sua_senha
+TELEGRAM_TOKEN=123456:ABC-DEF...  # Opcional
+TELEGRAM_CHAT_ID=987654321  # Opcional
+```
+
+#### **Local (.env para desenvolvimento)**
+```bash
+VITE_API_URL=http://localhost:3000  # ou URL do Vercel
+DATABASE_URL=postgresql://user:pass@host/db
+```
+
+### 5. Deploy
+
+#### **Vercel (Automático)**
+1. Conecte seu repositório GitHub à Vercel
+2. Vercel detecta automaticamente o projeto Vite
+3. Configure as variáveis de ambiente
+4. Deploy automático a cada push na `main`
+
+#### **GitHub Pages (Frontend)**
+```bash
+npm run build
+npx gh-pages -d dist
+```
+
+Acesse em: `https://RodrigoMD2025.github.io/cadastrosmd-automation-web/`
 
 ---
 
-## 🚀 Deploy para GitHub Pages
+## 📖 Uso
 
-Para ter seu painel online:
+### Upload de Planilha
 
-1.  **Faça o build da aplicação:**
-    ```bash
-    npm run build
-    ```
+1. **Prepare sua planilha** com as colunas obrigatórias:
+   - `ISRC` (12 caracteres)
+   - `ARTISTA` (nome do artista)
+   - `TITULARES` (separados por vírgula)
 
-2.  **Publique no GitHub Pages:**
-    ```bash
-    npx gh-pages -d dist
-    ```
+2. **Acesse o painel** e vá para a página "Upload"
 
-3.  **Seu site estará disponível em:**
-    ```
-    https://RodrigoMD2025.github.io/cadastrosmd-automation-web/
-    ```
+3. **Arraste a planilha** ou clique para selecionar
+
+4. **Escolha o modo**:
+   - **Adicionar**: Mantém dados existentes
+   - **Substituir**: Apaga tudo antes de importar
+
+5. **Clique em "Fazer Upload"**
+
+### Iniciar Automação
+
+1. **Dashboard**: Visualize os KPIs atualizados
+2. **Clique em "Iniciar Cadastros"**
+3. **Sistema calcula automaticamente** quantas máquinas usar
+4. **Acompanhe em tempo real**:
+   - Progresso (%)
+   - Tempo decorrido
+   - ETA (tempo restante)
+   - Sucessos vs Erros
+
+### Visualizar Dados
+
+1. **"Dados Cadastrados"**: Veja todos os registros processados
+2. **Ordenação**: Clique nos cabeçalhos das colunas
+3. **Busca**: Use o campo de pesquisa
+4. **Exportar**: Botões CSV, Excel ou PDF
+
+### Gerenciar Erros
+
+1. **Dashboard**: Veja o contador de "Falhas Recentes"
+2. **Clique em "Ver Erros Detalhados"**
+3. **Analise** tipo de erro e mensagem
+4. **Retry manual** se necessário
 
 ---
 
-## 🗺️ Testes
+## ⚡ Performance
 
-1.  **Teste o Upload de Planilha:**
-    *   Acesse seu site no GitHub Pages.
-    *   Faça login/cadastro.
-    *   Tente fazer o upload de uma planilha Excel.
-    *   Verifique se uma nova execução aparece na aba "Actions" do seu repositório GitHub.
+### Benchmarks
 
-2.  **Teste o Trigger do Playwright:**
-    *   Clique no botão "Executar Automação".
-    *   Verifique se uma nova execução aparece na aba "Actions" do seu repositório GitHub.
+| Registros | Máquinas | Tempo (antes) | Tempo (depois) | Redução |
+|-----------|----------|---------------|----------------|---------|
+| 100       | 1        | ~33 min       | ~33 min        | 0%      |
+| 200       | 2        | ~67 min       | ~35 min        | 48%     |
+| 300       | 3        | ~100 min      | ~33 min        | 67%     |
+| 500       | 5        | ~167 min      | ~33 min        | 80%     |
 
----
+**Tempo médio por registro**: ~20 segundos
 
-## 💰 Custos (100% Gratuito)
+### Otimizações Implementadas
 
--   **Vercel Serverless Functions**: 100GB-Hrs/mês grátis
--   **Vercel Blob**: 500MB storage + 5GB bandwidth/mês grátis
--   **GitHub Actions**: 2.000 minutos/mês grátis
--   **Neon PostgreSQL**: 0.5GB grátis
-
-**Total: R$ 0,00/mês 🎉**
+1. **Processamento Paralelo**: Modulo-based partitioning
+2. **Timeouts Reduzidos**: 25s total, 5s/3s seletores
+3. **Wait Optimization**: `domcontentloaded` ao invés de `networkidle`
+4. **Progresso Real-time**: Atualização a cada registro (não em batch)
+5. **Database Pooling**: Conexões reutilizadas
 
 ---
 
-## ✅ Vantagens Finais
+## 🐛 Troubleshooting
 
-✅ **Sem cartão de crédito** - 100% gratuito
-✅ **Tudo na Vercel** - Mais simples de gerenciar
-✅ **Edge Functions** - Rápido globalmente
-✅ **Auto-deploy** - Push no GitHub = deploy automático
-✅ **Limites generosos** - Bem acima do seu uso
+### Upload Falha
+
+**Problema**: Erro ao fazer upload de planilha
+
+**Soluções**:
+- Verifique se o arquivo é `.xlsx` ou `.xls`
+- Confirme que as colunas `ISRC`, `ARTISTA`, `TITULARES` existem
+- Verifique o tamanho do arquivo (< 5MB)
+- Tente com uma planilha menor primeiro
+
+### Automação Não Inicia
+
+**Problema**: Botão "Iniciar Cadastros" não funciona
+
+**Soluções**:
+- Verifique se há registros pendentes (`PAINEL_NEW IS NULL`)
+- Confirme que não há outra automação rodando
+- Check GitHub Actions quota (2000 min/mês free tier)
+- Verifique logs da Vercel Function
+
+### Progresso Não Atualiza
+
+**Problema**: Dashboard mostra progresso parado
+
+**Soluções**:
+- Aguarde 3-5 segundos (intervalo de polling)
+- Verifique conexão internet
+- Clique em "Atualizar" manualmente
+- Check GitHub Actions logs
+
+### Erro de Timeout
+
+**Problema**: Job do GitHub Actions timeout após 6h
+
+**Soluções**:
+- Reduza o batch size (ex: 50 ao invés de 100)
+- Aumente o número de máquinas manualmente
+- Verifique se o site externo está lento
+- Divida em múltiplos uploads menores
+
+---
+
+## 📊 Limites e Quotas
+
+### GitHub Actions (Free Tier)
+- ✅ 2.000 minutos/mês
+- ✅ 20 jobs simultâneos
+- ✅ 6h timeout por job
+
+### Vercel (Hobby Plan)
+- ✅ 100 GB-Hrs serverless functions/mês
+- ✅ 100 GB bandwidth/mês
+- ✅ 500 MB Blob storage
+- ✅ 5 GB Blob bandwidth/mês
+
+### Neon (Free Tier)
+- ✅ 0.5 GB storage
+- ✅ 1 database
+- ✅ 10 GB data transfer/mês
+
+**Custo Total**: **R$ 0,00/mês** 🎉
+
+---
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas! Para contribuir:
+
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -m 'feat: adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Abra um Pull Request
+
+---
+
+## 📝 Licença
+
+Este projeto é proprietário e confidencial.
+
+---
+
+## 👨‍💻 Autor
+
+**Rodrigo MD**
+- GitHub: [@RodrigoMD2025](https://github.com/RodrigoMD2025)
+
+---
+
+## 🙏 Agradecimentos
+
+- **Vercel** - Hosting e serverless functions
+- **GitHub** - Actions e repository hosting
+- **Neon** - Serverless PostgreSQL
+- **Playwright** - Web automation framework
+
+---
+
+**Desenvolvido com ❤️ para automatizar o impossível.**
