@@ -172,11 +172,22 @@ const UploadPage = () => {
     }
   };
 
+  const lastCompletedUploadId = React.useRef<string | null>(null);
+
   const handleUploadComplete = useCallback(() => {
+    // Prevent duplicate calls for the same upload
+    if (uploadId && lastCompletedUploadId.current === uploadId) {
+      return;
+    }
+
+    if (uploadId) {
+      lastCompletedUploadId.current = uploadId;
+    }
+
     toast.success('Processamento concluído!');
     // Refresh history list
     setHistoryRefreshTrigger(prev => prev + 1);
-  }, []);
+  }, [uploadId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 md:p-8">
@@ -378,14 +389,6 @@ const UploadPage = () => {
 
           {/* Right Column: Excel Template Example */}
           <div className="space-y-6">
-            {/* Processing Progress Tracker - Moved here */}
-            {uploadId && (
-              <UploadProgressTracker
-                uploadId={uploadId}
-                onComplete={handleUploadComplete}
-              />
-            )}
-
             <Card className="border-2 border-primary/10 shadow-md bg-white/50 dark:bg-slate-950/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -480,6 +483,14 @@ const UploadPage = () => {
             </Card>
           </div>
         </div>
+
+        {/* Processing Progress Tracker - Full Width */}
+        {uploadId && (
+          <UploadProgressTracker
+            uploadId={uploadId}
+            onComplete={handleUploadComplete}
+          />
+        )}
 
         {/* Upload History */}
         <div className="mt-8">
