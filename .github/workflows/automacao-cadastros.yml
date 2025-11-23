@@ -11,7 +11,17 @@ on:
         description: 'Tamanho do lote por processamento'
         required: false
         type: string
-        default: '150'
+        default: '100'
+      job_index:
+        description: 'Índice deste job (0-based)'
+        required: false
+        type: string
+        default: '0'
+      total_jobs:
+        description: 'Total de jobs paralelos'
+        required: false
+        type: string
+        default: '1'
 
 jobs:
   automation:
@@ -45,10 +55,13 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_ID: ${{ inputs.run_id }}
           BATCH_SIZE: ${{ inputs.batch_size }}
+          JOB_INDEX: ${{ inputs.job_index }}
+          TOTAL_JOBS: ${{ inputs.total_jobs }}
         run: |
           echo "Iniciando automação..."
           echo "Run ID: $RUN_ID"
           echo "Batch Size: $BATCH_SIZE"
+          echo "Job: $((JOB_INDEX + 1))/$TOTAL_JOBS"
           python scripts/client_cad_painel_neon_enhanced.py
 
       - name: Upload de logs

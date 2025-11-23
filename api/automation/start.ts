@@ -71,6 +71,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
+        // Calculate number of jobs based on scaling rules
+        let numJobs = 1;
+        if (totalRecords > 400) numJobs = 5;
+        else if (totalRecords > 300) numJobs = 4;
+        else if (totalRecords > 200) numJobs = 3;
+        else if (totalRecords > 100) numJobs = 2;
+
+        console.log(`Total records: ${totalRecords}, Dispatching ${numJobs} parallel job(s)`);
+
         // Create automation_progress record
         await client.query(
             `INSERT INTO public.automation_progress 
@@ -79,34 +88,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             [runId, totalRecords]
         );
 
-        // Trigger GitHub Actions workflow
+        // Trigger GitHub Actions workflows (multiple in parallel)
         let workflowRunId = null;
+        const failedDispatches: number[] = [];
 
         if (githubToken) {
             try {
-                const workflowResponse = await fetch(
-                    `https://api.github.com/repos/${githubRepo}/actions/workflows/automacao-cadastros.yml/dispatches`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${githubToken}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            ref: 'main',
-                            inputs: {
-                                run_id: runId,
-                                batch_size: batch_size.toString()
+                // Dispatch workflow for each job
+                const dispatchPromises = [];
+                for (let jobIndex = 0; jobIndex < numJobs; jobIndex++) {
+                    dispatchPromises.push(
+                        fetch(
+                            `https://api.github.com/repos/${githubRepo}/actions/workflows/automacao-cadastros.yml/dispatches`,
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${githubToken}`,
+                                    'Accept': 'application/vnd.github.v3+json',
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    ref: 'main',
+                                    inputs: {
+                                        run_id: runId,
+                                        batch_size: batch_size.toString(),
+                                        job_index: jobIndex.toString(),
+                                        total_jobs: numJobs.toString()
+                                    }
+                                })
                             }
+                        ).then(async (response) => {
+                            if (!response.ok) {
+                                console.error(`Failed to trigger workflow job ${jobIndex}:`, await response.text());
+                                failedDispatches.push(jobIndex);
+                            }
+                            return response;
                         })
-                    }
-                );
+                    );
+                }
 
-                if (workflowResponse.ok) {
-                    workflowRunId = 'triggered';
-                } else {
-                    console.error('Failed to trigger workflow:', await workflowResponse.text());
+                await Promise.all(dispatchPromises);
+
+                if (failedDispatches.length === 0) {
+                    workflowRunId = `triggered-${numJobs}-jobs`;
+                } else if (failedDispatches.length < numJobs) {
+                    workflowRunId = `partial-${numJobs - failedDispatches.length}-of-${numJobs}`;
                 }
             } catch (error) {
                 console.error('Error triggering GitHub Actions:', error);
@@ -118,9 +144,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             run_id: runId,
             total_records: totalRecords,
             batch_size,
-            message: 'Automação iniciada com sucesso',
+            num_jobs: numJobs,
+            message: `Automação iniciada com ${numJobs} máquina(s)`,
             workflow_triggered: !!workflowRunId,
-            workflow_run_id: workflowRunId
+            workflow_run_id: workflowRunId,
+            failed_dispatches: failedDispatches.length > 0 ? failedDispatches : undefined
         });
 
     } catch (error) {

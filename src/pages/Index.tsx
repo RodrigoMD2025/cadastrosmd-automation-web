@@ -109,7 +109,7 @@ const Index = () => {
     },
     onSuccess: (result) => {
       toast.success('Automação iniciada!', {
-        description: `${result.total_records} registros serão processados`
+        description: `${result.total_records} registros serão processados por ${result.num_jobs || 1} máquina(s)`
       });
       queryClient.invalidateQueries({ queryKey: ['automationStatus'] });
     },

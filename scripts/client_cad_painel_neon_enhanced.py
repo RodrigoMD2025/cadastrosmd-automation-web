@@ -35,8 +35,10 @@ class WebAutomation:
         self.telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
         self.database_url = os.getenv('DATABASE_URL')
         self.tabela = os.getenv('TABELA', 'cadastros')
-        self.batch_size = int(os.getenv('BATCH_SIZE', 150))
+        self.batch_size = int(os.getenv('BATCH_SIZE', 100))
         self.run_id = os.getenv('RUN_ID', f'auto-{int(time.time())}')
+        self.job_index = int(os.getenv('JOB_INDEX', '0'))
+        self.total_jobs = int(os.getenv('TOTAL_JOBS', '1'))
         
         # Contadores
         self.total_processed = 0
@@ -155,27 +157,30 @@ class WebAutomation:
             logging.error(f"Erro ao marcar erro resolvido para ISRC {isrc}: {e}")
 
     def buscar_dados_neon(self):
-        """Busca dados pendentes da tabela no Neon"""
+        """Busca dados pendentes da tabela no Neon com particionamento por job"""
         try:
-            logging.info(f"Buscando registros pendentes do Neon...")
+            logging.info(f"Buscando registros pendentes do Neon (Job {self.job_index + 1}/{self.total_jobs})...")
             
             with psycopg2.connect(self.database_url) as conn:
                 with conn.cursor(cursor_factory=DictCursor) as cur:
+                    # Use modulo to partition records across jobs
+                    # Each job processes records where (id % total_jobs) == job_index
                     query = f'''
                         SELECT * FROM public."{self.tabela}"
                         WHERE "PAINEL_NEW" IS NULL
+                        AND (id % %s) = %s
                         ORDER BY "id" ASC
                         LIMIT %s
                     '''
-                    cur.execute(query, (self.batch_size,))
+                    cur.execute(query, (self.total_jobs, self.job_index, self.batch_size))
                     dados = cur.fetchall()
 
                     if not dados:
-                        logging.info(f"Nenhum registro pendente encontrado.")
+                        logging.info(f"Nenhum registro pendente encontrado para este job.")
                         return pd.DataFrame()
                     
                     df = pd.DataFrame([dict(row) for row in dados])
-                    logging.info(f"Encontrados {len(df)} registros para processar.")
+                    logging.info(f"Encontrados {len(df)} registros para processar neste job.")
                     return df
                 
         except Exception as e:
