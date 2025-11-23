@@ -148,8 +148,9 @@ const Index = () => {
 
   const canStartAutomation = !data?.is_running && (data?.restantes || 0) > 0;
 
-  // Timer para mostrar tempo decorrido
+  // Timer para mostrar tempo decorrido e ETA
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [eta, setEta] = useState<number | null>(null);
 
   useEffect(() => {
     if (data?.is_running && data?.automation_progress?.started_at) {
@@ -159,13 +160,31 @@ const Index = () => {
         const now = new Date().getTime();
         const elapsed = Math.floor((now - startTime) / 1000); // segundos
         setElapsedTime(elapsed);
+
+        // Calculate ETA
+        if (data.automation_progress && data.automation_progress.processed > 0) {
+          const processed = data.automation_progress.processed;
+          const total = data.automation_progress.total;
+          const remaining = total - processed;
+
+          if (remaining > 0) {
+            const avgTimePerItem = elapsed / processed;
+            const estimatedRemaining = Math.floor(avgTimePerItem * remaining);
+            setEta(estimatedRemaining);
+          } else {
+            setEta(0);
+          }
+        } else {
+          setEta(null);
+        }
       }, 1000);
 
       return () => clearInterval(interval);
     } else {
       setElapsedTime(0);
+      setEta(null);
     }
-  }, [data?.is_running, data?.automation_progress?.started_at]);
+  }, [data?.is_running, data?.automation_progress?.started_at, data?.automation_progress?.processed, data?.automation_progress?.total]);
 
   // Formata tempo em MM:SS ou HH:MM:SS
   const formatElapsedTime = (seconds: number): string => {
@@ -244,9 +263,14 @@ const Index = () => {
               {isProvisioning ? '⚙️ Provisionando...' : data?.is_running ? 'Automação em andamento' : 'Progresso Geral'}
             </span>
             {data?.is_running && (
-              <span className="text-sm font-mono">
-                ⏱️ {formatElapsedTime(elapsedTime)}
-              </span>
+              <div className="flex gap-4 text-sm font-mono">
+                <span>⏱️ {formatElapsedTime(elapsedTime)}</span>
+                {eta !== null && (
+                  <span className="text-muted-foreground">
+                    🏁 ETA: {formatElapsedTime(eta)}
+                  </span>
+                )}
+              </div>
             )}
           </AlertTitle>
           <AlertDescription className={data?.is_running ? "text-blue-800 dark:text-blue-200" : "text-gray-800 dark:text-gray-200"}>
