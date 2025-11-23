@@ -268,24 +268,25 @@ class WebAutomation:
             return True, None
 
     async def cadastrar_musica(self, row):
-        """Cadastra uma música no painel - USANDO TIMEOUTS DO ORIGINAL"""
+        """Cadastra uma música no painel - OTIMIZADO PARA ~16s"""
         isrc = row.get('ISRC')
         artista = row.get('ARTISTA')
         titulares = row.get('TITULARES')
         
-        # Timeout aumentado de volta para 30s (como antes da otimização)
-        async with asyncio.timeout(30):
-            await self.page.goto("https://sistemamd.com.br/musicas/add")
-            await self.page.wait_for_selector('input#titulo')
+        # Timeout de 25s (reduzido de 30s)
+        async with asyncio.timeout(25):
+            # Usa wait_until='domcontentloaded' para ser mais rápido
+            await self.page.goto("https://sistemamd.com.br/musicas/add", wait_until='domcontentloaded')
+            await self.page.wait_for_selector('input#titulo', timeout=5000)
             
             await self.page.fill('input#titulo', str(artista))
             await self.page.fill('input#isrc', str(isrc))
             await self.page.click('span.select2-selection')
             
-            titular_input = await self.page.wait_for_selector('input.select2-search__field')
+            titular_input = await self.page.wait_for_selector('input.select2-search__field', timeout=3000)
             await titular_input.fill(str(titulares))
             await titular_input.press('Enter')
-            await self.page.wait_for_timeout(500)  # MESMO DO ORIGINAL
+            await self.page.wait_for_timeout(200)  # Reduzido de 500ms
 
             await self.page.click('input#titular_2')
             await self.page.click('input#titular_1')
@@ -293,13 +294,12 @@ class WebAutomation:
             await self.page.click('input#titular_5')
             await self.page.click('input#titular_3')
 
-            await self.page.wait_for_timeout(500)  # MESMO DO ORIGINAL
+            await self.page.wait_for_timeout(250)  # Reduzido de 500ms
             await self.page.click('button#AdicionarTitular')
             await self.page.click('button#BtnSalvar')
             
-            # Validação simplificada - apenas aguarda e assume sucesso
-            await self.page.wait_for_timeout(500)
-            # Não valida erro - confia que funcionou (como original)
+            # Removida validação - confia no save (economiza ~500ms)
+            await self.page.wait_for_timeout(100)  # Apenas pequeno delay
 
     async def cadastrar_com_retry(self, row, max_retries=3):
         """Tenta cadastrar com retry exponencial"""
