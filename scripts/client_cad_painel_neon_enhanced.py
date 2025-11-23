@@ -187,11 +187,20 @@ class WebAutomation:
         try:
             with psycopg2.connect(self.database_url) as conn:
                 with conn.cursor() as cur:
-                    query = f'''
-                        UPDATE public."{self.tabela}"
-                        SET "PAINEL_NEW" = %s
-                        WHERE "ISRC" = %s
-                    '''
+                    # Se foi sucesso, registra o timestamp
+                    if status == 'Cadastro OK':
+                        query = f'''
+                            UPDATE public."{self.tabela}"
+                            SET "PAINEL_NEW" = %s,
+                                cadastrado_em = NOW()
+                            WHERE "ISRC" = %s
+                        '''
+                    else:
+                        query = f'''
+                            UPDATE public."{self.tabela}"
+                            SET "PAINEL_NEW" = %s
+                            WHERE "ISRC" = %s
+                        '''
                     cur.execute(query, (status, isrc))
                     conn.commit()
                     return True

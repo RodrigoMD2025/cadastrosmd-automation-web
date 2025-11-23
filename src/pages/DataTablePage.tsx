@@ -219,6 +219,27 @@ const DataTablePage = () => {
                                                                         Pendente
                                                                     </Badge>
                                                                 )
+                                                            ) : column === 'cadastrado_em' ? (
+                                                                // Formatação especial para timestamp
+                                                                row[column] ? (
+                                                                    <div className="text-sm">
+                                                                        <div className="font-medium">
+                                                                            {new Date(row[column]).toLocaleDateString('pt-BR', {
+                                                                                day: '2-digit',
+                                                                                month: '2-digit',
+                                                                                year: 'numeric'
+                                                                            })}
+                                                                        </div>
+                                                                        <div className="text-xs text-muted-foreground">
+                                                                            {new Date(row[column]).toLocaleTimeString('pt-BR', {
+                                                                                hour: '2-digit',
+                                                                                minute: '2-digit'
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-muted-foreground">-</span>
+                                                                )
                                                             ) : (
                                                                 row[column] !== null && row[column] !== undefined
                                                                     ? String(row[column])

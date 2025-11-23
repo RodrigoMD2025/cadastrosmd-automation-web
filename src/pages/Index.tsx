@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -148,6 +148,41 @@ const Index = () => {
 
   const canStartAutomation = !data?.is_running && (data?.restantes || 0) > 0;
 
+  // Timer para mostrar tempo decorrido
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  useEffect(() => {
+    if (data?.is_running && data?.automation_progress?.started_at) {
+      const startTime = new Date(data.automation_progress.started_at).getTime();
+
+      const interval = setInterval(() => {
+        const now = new Date().getTime();
+        const elapsed = Math.floor((now - startTime) / 1000); // segundos
+        setElapsedTime(elapsed);
+      }, 1000);
+
+      return () => clearInterval(interval);
+    } else {
+      setElapsedTime(0);
+    }
+  }, [data?.is_running, data?.automation_progress?.started_at]);
+
+  // Formata tempo em MM:SS ou HH:MM:SS
+  const formatElapsedTime = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+    return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  // Detecta se está provisionando (iniciou mas não processou nada ainda)
+  const isProvisioning = data?.is_running &&
+    (!data?.automation_progress || data.automation_progress.processed === 0);
+
   // Debug log para troubleshooting (pode ser removido em produção)
   if (error && !isLoading) {
     console.error('Erro ao buscar status:', error);
@@ -198,17 +233,32 @@ const Index = () => {
         )}
 
 
-        {/* Unified Progress Alert - Shows running automation OR general overview */}
+        {/* Unified Progress Alert - Shows provisioning, running automation OR general overview */}
         <Alert className={data?.is_running
           ? "bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800"
           : "bg-gray-50 border-gray-200 dark:bg-gray-900 dark:border-gray-700"
         }>
           <Activity className={`h-4 w-4 ${data?.is_running ? 'text-blue-600 dark:text-blue-400 animate-pulse' : 'text-gray-600 dark:text-gray-400'}`} />
-          <AlertTitle className={data?.is_running ? "text-blue-900 dark:text-blue-100" : "text-gray-900 dark:text-gray-100"}>
-            {data?.is_running ? 'Automação em andamento' : 'Progresso Geral'}
+          <AlertTitle className={`${data?.is_running ? "text-blue-900 dark:text-blue-100" : "text-gray-900 dark:text-gray-100"} flex items-center justify-between`}>
+            <span>
+              {isProvisioning ? '⚙️ Provisionando...' : data?.is_running ? 'Automação em andamento' : 'Progresso Geral'}
+            </span>
+            {data?.is_running && (
+              <span className="text-sm font-mono">
+                ⏱️ {formatElapsedTime(elapsedTime)}
+              </span>
+            )}
           </AlertTitle>
           <AlertDescription className={data?.is_running ? "text-blue-800 dark:text-blue-200" : "text-gray-800 dark:text-gray-200"}>
-            {data?.is_running && data.automation_progress ? (
+            {isProvisioning ? (
+              // PROVISIONING: Aguardando GitHub Actions preparar ambiente
+              <div className="mt-2 space-y-2">
+                <p className="text-sm">
+                  Preparando ambiente de execução... Isso pode levar alguns segundos.
+                </p>
+                <Progress value={0} className="h-2 animate-pulse" />
+              </div>
+            ) : data?.is_running && data.automation_progress ? (
               // RUNNING: Real-time automation progress
               <div className="mt-2 space-y-2">
                 <div className="flex items-center justify-between text-sm">
