@@ -377,10 +377,20 @@ const Index = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <Button
-                onClick={() => startAutomation.mutate()}
+                onClick={() => {
+                  console.log('🔵 Botão clicked!', {
+                    canStartAutomation,
+                    isPending: startAutomation.isPending,
+                    isRunning: data?.is_running,
+                    restantes: data?.restantes
+                  });
+                  startAutomation.mutate();
+                }}
                 disabled={!canStartAutomation || startAutomation.isPending}
                 className="w-full"
                 size="lg"
+                onMouseEnter={() => console.log('🖱️ Mouse ENTER no botão')}
+                onMouseLeave={() => console.log('🖱️ Mouse LEAVE do botão')}
               >
                 {startAutomation.isPending ? (
                   <>
@@ -399,6 +409,15 @@ const Index = () => {
                   </>
                 )}
               </Button>
+
+              {/* Debug info - Remover depois */}
+              <div className="text-xs text-muted-foreground space-y-1 p-2 bg-muted/50 rounded">
+                <p>🐛 Debug Info:</p>
+                <p>canStartAutomation: <strong>{canStartAutomation ? '✅ TRUE' : '❌ FALSE'}</strong></p>
+                <p>isPending: <strong>{startAutomation.isPending ? 'SIM' : 'NÃO'}</strong></p>
+                <p>disabled: <strong>{(!canStartAutomation || startAutomation.isPending) ? '❌ SIM' : '✅ NÃO'}</strong></p>
+                <p>restantes: <strong>{data?.restantes || 'undefined'}</strong></p>
+              </div>
 
               {data?.restantes === 0 && !data.is_running && (
                 <Alert>
