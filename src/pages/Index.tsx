@@ -148,17 +148,7 @@ const Index = () => {
 
   const canStartAutomation = !data?.is_running && (data?.restantes || 0) > 0;
 
-  // Debug log para troubleshooting
-  console.log('Dashboard Debug:', {
-    isLoading,
-    hasError: !!error,
-    hasData: !!data,
-    isRunning: data?.is_running,
-    restantes: data?.restantes,
-    canStartAutomation
-  });
-
-  // Se houver erro, mostrar alerta
+  // Debug log para troubleshooting (pode ser removido em produção)
   if (error && !isLoading) {
     console.error('Erro ao buscar status:', error);
   }
@@ -176,7 +166,15 @@ const Index = () => {
               Monitoramento e controle de cadastros
             </p>
           </div>
-          <Button onClick={() => refetch()} variant="outline" size="sm" disabled={isLoading}>
+          <Button
+            onClick={() => {
+              console.log('Atualizando dados...');
+              refetch();
+            }}
+            variant="outline"
+            size="sm"
+            disabled={isLoading}
+          >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
@@ -378,19 +376,12 @@ const Index = () => {
             <CardContent className="space-y-4">
               <Button
                 onClick={() => {
-                  console.log('🔵 Botão clicked!', {
-                    canStartAutomation,
-                    isPending: startAutomation.isPending,
-                    isRunning: data?.is_running,
-                    restantes: data?.restantes
-                  });
+                  console.log('🔵 Iniciando automação...');
                   startAutomation.mutate();
                 }}
                 disabled={!canStartAutomation || startAutomation.isPending}
                 className="w-full"
                 size="lg"
-                onMouseEnter={() => console.log('🖱️ Mouse ENTER no botão')}
-                onMouseLeave={() => console.log('🖱️ Mouse LEAVE do botão')}
               >
                 {startAutomation.isPending ? (
                   <>
@@ -409,15 +400,6 @@ const Index = () => {
                   </>
                 )}
               </Button>
-
-              {/* Debug info - Remover depois */}
-              <div className="text-xs text-muted-foreground space-y-1 p-2 bg-muted/50 rounded">
-                <p>🐛 Debug Info:</p>
-                <p>canStartAutomation: <strong>{canStartAutomation ? '✅ TRUE' : '❌ FALSE'}</strong></p>
-                <p>isPending: <strong>{startAutomation.isPending ? 'SIM' : 'NÃO'}</strong></p>
-                <p>disabled: <strong>{(!canStartAutomation || startAutomation.isPending) ? '❌ SIM' : '✅ NÃO'}</strong></p>
-                <p>restantes: <strong>{data?.restantes || 'undefined'}</strong></p>
-              </div>
 
               {data?.restantes === 0 && !data.is_running && (
                 <Alert>

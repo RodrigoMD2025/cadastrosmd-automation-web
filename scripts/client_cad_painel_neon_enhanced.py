@@ -231,7 +231,7 @@ class WebAutomation:
             await self.page.fill('input#login-password', self.login_password)
             await self.page.click('button[type="submit"]')
             
-            await self.page.wait_for_timeout(2000) 
+            await self.page.wait_for_timeout(1000)  # Reduzido de 2000 
             
             current_url = self.page.url
             if "login" in current_url:
@@ -247,8 +247,8 @@ class WebAutomation:
     async def validar_cadastro_sucesso(self):
         """Valida se o cadastro foi bem-sucedido"""
         try:
-            # Aguarda por indicadores de sucesso ou redirecionamento
-            await self.page.wait_for_timeout(2000)
+            # Aguarda apenas 500ms - o save é rápido
+            await self.page.wait_for_timeout(500)  # Reduzido de 2000!
             
             # Verifica se há mensagem de erro
             error_selector = '.alert-danger, .error-message, .alert.alert-error'
@@ -272,10 +272,10 @@ class WebAutomation:
         artista = row.get('ARTISTA')
         titulares = row.get('TITULARES')
         
-        # Timeout de 30 segundos para todo o processo de cadastro
-        async with asyncio.timeout(30):
-            await self.page.goto("https://sistemamd.com.br/musicas/add", timeout=15000)
-            await self.page.wait_for_selector('input#titulo', timeout=10000)
+        # Timeout de 20 segundos para todo o processo de cadastro (reduzido de 30)
+        async with asyncio.timeout(20):
+            await self.page.goto("https://sistemamd.com.br/musicas/add", timeout=10000)
+            await self.page.wait_for_selector('input#titulo', timeout=8000)
             
             await self.page.fill('input#titulo', str(artista))
             await self.page.fill('input#isrc', str(isrc))
@@ -284,7 +284,7 @@ class WebAutomation:
             titular_input = await self.page.wait_for_selector('input.select2-search__field', timeout=5000)
             await titular_input.fill(str(titulares))
             await titular_input.press('Enter')
-            await self.page.wait_for_timeout(500)
+            await self.page.wait_for_timeout(300)  # Reduzido de 500
 
             await self.page.click('input#titular_2')
             await self.page.click('input#titular_1')
@@ -292,11 +292,11 @@ class WebAutomation:
             await self.page.click('input#titular_5')
             await self.page.click('input#titular_3')
 
-            await self.page.wait_for_timeout(500)
+            await self.page.wait_for_timeout(300)  # Reduzido de 500
             await self.page.click('button#AdicionarTitular')
             await self.page.click('button#BtnSalvar')
             
-            # Validar sucesso
+            # Validar sucesso (agora só 500ms ao invés de 2s!)
             success, error_msg = await self.validar_cadastro_sucesso()
             if not success:
                 raise Exception(f"Cadastro falhou: {error_msg}")
