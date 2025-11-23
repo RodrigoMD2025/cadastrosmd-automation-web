@@ -99,7 +99,7 @@ const Index = () => {
       const response = await fetch(`${API_URL}/api/automation/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batch_size: 150 })
+        body: JSON.stringify({ batch_size: 100 })
       });
       if (!response.ok) {
         const errorData = await response.json();
