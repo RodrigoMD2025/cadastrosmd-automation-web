@@ -106,6 +106,20 @@ const UploadPage = () => {
         setUploadId(newUploadId);
         // Save to context + localStorage
         setActiveUpload(newUploadId, file.name);
+
+        // NOVO: Limpar erros antigos quando houver novo upload
+        try {
+          const clearResponse = await fetch(`${API_URL}/api/automation/clear-errors`, {
+            method: 'POST',
+          });
+          if (clearResponse.ok) {
+            console.log('✅ Erros antigos limpos com sucesso');
+          }
+        } catch (e) {
+          console.warn('Aviso: Não foi possível limpar erros antigos:', e);
+          // Não falha o upload por causa disso
+        }
+
         toast.success(result.message || 'Planilha enviada com sucesso!');
       } else {
         const errorData = await response.json();

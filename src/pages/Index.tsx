@@ -168,8 +168,12 @@ const Index = () => {
           </div>
           <Button
             onClick={() => {
-              console.log('Atualizando dados...');
+              console.log('🔄 Atualizando dashboard...');
+              // Invalida todas as queries para forçar refetch completo
+              queryClient.invalidateQueries();
+              // Também força refetch da query principal
               refetch();
+              toast.success('Dashboard atualizado!');
             }}
             variant="outline"
             size="sm"
