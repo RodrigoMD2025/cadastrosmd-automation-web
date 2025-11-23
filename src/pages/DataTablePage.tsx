@@ -192,7 +192,7 @@ const DataTablePage = () => {
                                             <TableRow>
                                                 {columns.map((column) => (
                                                     <TableHead key={column} className="min-w-[150px]">
-                                                        {column}
+                                                        {column === 'PAINEL_NEW' ? 'STATUS' : column}
                                                     </TableHead>
                                                 ))}
                                             </TableRow>
@@ -204,20 +204,17 @@ const DataTablePage = () => {
                                                         <TableCell key={column}>
                                                             {column === 'PAINEL_NEW' ? (
                                                                 row[column] === 'Cadastro OK' ? (
-                                                                    <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-                                                                        <CheckCircle className="h-3 w-3 mr-1" />
-                                                                        Cadastrado
-                                                                    </Badge>
+                                                                    <div className="flex items-center justify-center" title="Cadastrado">
+                                                                        <CheckCircle className="h-4 w-4 text-green-600" />
+                                                                    </div>
                                                                 ) : row[column] === 'Erro no Cadastro' ? (
-                                                                    <Badge variant="destructive">
-                                                                        <XCircle className="h-3 w-3 mr-1" />
-                                                                        Erro
-                                                                    </Badge>
+                                                                    <div className="flex items-center justify-center" title="Erro no Cadastro">
+                                                                        <XCircle className="h-4 w-4 text-red-600" />
+                                                                    </div>
                                                                 ) : (
-                                                                    <Badge variant="secondary">
-                                                                        <Clock className="h-3 w-3 mr-1" />
-                                                                        Pendente
-                                                                    </Badge>
+                                                                    <div className="flex items-center justify-center" title="Pendente">
+                                                                        <Clock className="h-4 w-4 text-gray-400" />
+                                                                    </div>
                                                                 )
                                                             ) : column === 'CADASTRADO' ? (
                                                                 // Formatação: DD-MM-YYYY HH:MM:SS
