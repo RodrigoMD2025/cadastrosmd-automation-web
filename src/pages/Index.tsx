@@ -148,6 +148,21 @@ const Index = () => {
 
   const canStartAutomation = !data?.is_running && (data?.restantes || 0) > 0;
 
+  // Debug log para troubleshooting
+  console.log('Dashboard Debug:', {
+    isLoading,
+    hasError: !!error,
+    hasData: !!data,
+    isRunning: data?.is_running,
+    restantes: data?.restantes,
+    canStartAutomation
+  });
+
+  // Se houver erro, mostrar alerta
+  if (error && !isLoading) {
+    console.error('Erro ao buscar status:', error);
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <div className="container mx-auto px-4 md:px-8 py-8 space-y-8">
@@ -161,11 +176,24 @@ const Index = () => {
               Monitoramento e controle de cadastros
             </p>
           </div>
-          <Button onClick={() => refetch()} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button onClick={() => refetch()} variant="outline" size="sm" disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro ao carregar dados</AlertTitle>
+            <AlertDescription>
+              Não foi possível conectar à API. Verifique a conexão e tente novamente.
+              <br />
+              <code className="text-xs mt-2 block">{(error as Error).message}</code>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Automation Progress Alert */}
         {data?.is_running && data.automation_progress && (
