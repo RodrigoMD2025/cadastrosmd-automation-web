@@ -40,7 +40,7 @@ const MainLayout = () => {
         <SidebarHeader>
           <div className="flex items-center gap-2">
             <Bot className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold">Automação</span>
+            <span className="text-lg font-semibold">Procastneitor System Bot</span>
           </div>
         </SidebarHeader>
         <SidebarContent>

@@ -78,6 +78,7 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
         // Primeira busca imediata
         fetchProgress();
 
+
         // Polling a cada 2 segundos enquanto não completou
         const interval = setInterval(() => {
             if (progress?.is_complete) {
@@ -88,7 +89,8 @@ export function UploadProgressTracker({ uploadId, onComplete }: UploadProgressTr
         }, 2000);
 
         return () => clearInterval(interval);
-    }, [uploadId, progress?.is_complete, onComplete]);
+    }, [uploadId, onComplete]); // Removed progress?.is_complete from deps to prevent loop
+
 
     if (isLoading) {
         return (
