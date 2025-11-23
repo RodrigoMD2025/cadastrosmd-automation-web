@@ -307,8 +307,8 @@ const Index = () => {
                       startAngle={90}
                       endAngle={-270}
                     >
-                      <Cell fill="hsl(var(--green-600))" />
-                      <Cell fill="hsl(var(--muted))" />
+                      <Cell fill="#16a34a" />  {/* Verde vibrante */}
+                      <Cell fill="#e5e7eb" />  {/* Cinza claro */}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
@@ -354,8 +354,8 @@ const Index = () => {
                       startAngle={90}
                       endAngle={-270}
                     >
-                      <Cell fill="hsl(var(--orange-600))" />
-                      <Cell fill="hsl(var(--muted))" />
+                      <Cell fill="#f97316" />  {/* Laranja vibrante */}
+                      <Cell fill="#e5e7eb" />  {/* Cinza claro */}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
