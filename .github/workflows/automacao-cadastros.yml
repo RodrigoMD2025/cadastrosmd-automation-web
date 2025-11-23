@@ -1,0 +1,61 @@
+name: Automação de Cadastros MusicDelivery
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'ID da execução de automação'
+        required: true
+        type: string
+      batch_size:
+        description: 'Tamanho do lote por processamento'
+        required: false
+        type: string
+        default: '150'
+
+jobs:
+  automation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 horas máximo
+    
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependências
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt || pip install asyncio pandas psycopg2-binary playwright requests python-dotenv tqdm
+          playwright install chromium
+          playwright install-deps
+
+      - name: Executar automação de cadastros
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TABELA: ${{ secrets.TABELA }}
+          LOGIN_USERNAME: ${{ secrets.LOGIN_USERNAME }}
+          LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_ID: ${{ inputs.run_id }}
+          BATCH_SIZE: ${{ inputs.batch_size }}
+        run: |
+          echo "Iniciando automação..."
+          echo "Run ID: $RUN_ID"
+          echo "Batch Size: $BATCH_SIZE"
+          python scripts/client_cad_painel_neon_enhanced.py
+
+      - name: Upload de logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: automation-logs-${{ inputs.run_id }}
+          path: |
+            painel_novo_neon.log
+          retention-days: 30
