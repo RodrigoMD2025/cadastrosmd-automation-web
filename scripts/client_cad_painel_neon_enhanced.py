@@ -192,7 +192,7 @@ class WebAutomation:
                         query = f'''
                             UPDATE public."{self.tabela}"
                             SET "PAINEL_NEW" = %s,
-                                cadastrado_em = NOW()
+                                "CADASTRADO" = NOW()
                             WHERE "ISRC" = %s
                         '''
                     else:

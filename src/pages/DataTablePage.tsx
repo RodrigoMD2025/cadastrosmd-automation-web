@@ -192,7 +192,7 @@ const DataTablePage = () => {
                                             <TableRow>
                                                 {columns.map((column) => (
                                                     <TableHead key={column} className="min-w-[150px]">
-                                                        {column === 'cadastrado_em' ? 'CADASTRADO' : column}
+                                                        {column}
                                                     </TableHead>
                                                 ))}
                                             </TableRow>
@@ -219,7 +219,7 @@ const DataTablePage = () => {
                                                                         Pendente
                                                                     </Badge>
                                                                 )
-                                                            ) : column === 'cadastrado_em' ? (
+                                                            ) : column === 'CADASTRADO' ? (
                                                                 // Formatação especial para timestamp
                                                                 row[column] ? (
                                                                     <div className="text-sm">
