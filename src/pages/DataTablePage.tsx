@@ -11,8 +11,11 @@ import {
     TableHeader,
     TableRow
 } from '@/components/ui/table';
-import { Search, RefreshCw, Loader2, Database, ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, RefreshCw, Loader2, Database, ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://cadastrosmd-automation-web.vercel.app';
 
@@ -37,6 +40,7 @@ const DataTablePage = () => {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
 
     // Debounce search
     useEffect(() => {
@@ -98,6 +102,131 @@ const DataTablePage = () => {
         setOffset(offset + limit);
     };
 
+    // Export functions
+    const exportToCSV = async () => {
+        setIsExporting(true);
+        try {
+            // Fetch all data for export
+            const response = await fetch(`${API_URL}/api/cadastros?limit=10000`);
+            if (!response.ok) throw new Error('Erro ao buscar dados para export');
+
+            const result = await response.json();
+            const exportData = result.data;
+            const exportColumns = result.columns.filter((col: string) => !['#', 'id'].includes(col.toLowerCase()));
+
+            // Create CSV content
+            const csvContent = [
+                exportColumns.join(','), // Header
+                ...exportData.map((row: any) =>
+                    exportColumns.map(col => {
+                        const value = row[col] ?? '';
+                        // Escape quotes and wrap in quotes if contains comma
+                        return typeof value === 'string' && value.includes(',')
+                            ? `"${value.replace(/"/g, '""')}"`
+                            : value;
+                    }).join(',')
+                )
+            ].join('\n');
+
+            // Download
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `cadastros_${new Date().toISOString().split('T')[0]}.csv`);
+            link.click();
+            URL.revokeObjectURL(url);
+
+            toast.success('CSV exportado com sucesso!');
+        } catch (error) {
+            toast.error('Erro ao exportar CSV');
+            console.error(error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const exportToExcel = async () => {
+        setIsExporting(true);
+        try {
+            const response = await fetch(`${API_URL}/api/cadastros?limit=10000`);
+            if (!response.ok) throw new Error('Erro ao buscar dados para export');
+
+            const result = await response.json();
+            const exportData = result.data;
+            const exportColumns = result.columns.filter((col: string) => !['#', 'id'].includes(col.toLowerCase()));
+
+            // Prepare data for Excel
+            const wsData = [
+                exportColumns, // Header
+                ...exportData.map((row: any) => exportColumns.map(col => row[col] ?? ''))
+            ];
+
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Cadastros');
+
+            // Download
+            XLSX.writeFile(wb, `cadastros_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+            toast.success('Excel exportado com sucesso!');
+        } catch (error) {
+            toast.error('Erro ao exportar Excel');
+            console.error(error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const exportToPDF = async () => {
+        setIsExporting(true);
+        try {
+            const response = await fetch(`${API_URL}/api/cadastros?limit=10000`);
+            if (!response.ok) throw new Error('Erro ao buscar dados para export');
+
+            const result = await response.json();
+            const exportData = result.data;
+            const exportColumns = result.columns.filter((col: string) => !['#', 'id'].includes(col.toLowerCase()));
+
+            const doc = new jsPDF('l', 'mm', 'a4'); // Landscape
+
+            doc.setFontSize(16);
+            doc.text('Relatório de Cadastros', 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
+
+            // Prepare table data
+            const tableData = exportData.map((row: any) =>
+                exportColumns.map(col => {
+                    const value = row[col];
+                    if (col === 'CADASTRADO' && value) {
+                        const date = new Date(value);
+                        return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                    }
+                    return value ?? '';
+                })
+            );
+
+            autoTable(doc, {
+                head: [exportColumns],
+                body: tableData,
+                startY: 28,
+                styles: { fontSize: 8, cellPadding: 2 },
+                headStyles: { fillColor: [59, 130, 246], fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [245, 245, 245] },
+            });
+
+            doc.save(`cadastros_${new Date().toISOString().split('T')[0]}.pdf`);
+
+            toast.success('PDF exportado com sucesso!');
+        } catch (error) {
+            toast.error('Erro ao exportar PDF');
+            console.error(error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const currentPage = Math.floor(offset / limit) + 1;
     const totalPages = Math.ceil(total / limit);
     const hasNext = offset + limit < total;
@@ -155,6 +284,41 @@ const DataTablePage = () => {
                                 <Badge variant="secondary" className="text-sm">
                                     {total.toLocaleString('pt-BR')} {total === 1 ? 'registro' : 'registros'}
                                 </Badge>
+
+                                {/* Export Buttons */}
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={exportToCSV}
+                                        disabled={isExporting || isLoading || total === 0}
+                                        title="Exportar como CSV"
+                                    >
+                                        <FileDown className="h-4 w-4 mr-1" />
+                                        CSV
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={exportToExcel}
+                                        disabled={isExporting || isLoading || total === 0}
+                                        title="Exportar como Excel"
+                                    >
+                                        <FileDown className="h-4 w-4 mr-1" />
+                                        Excel
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={exportToPDF}
+                                        disabled={isExporting || isLoading || total === 0}
+                                        title="Exportar como PDF"
+                                    >
+                                        <FileDown className="h-4 w-4 mr-1" />
+                                        PDF
+                                    </Button>
+                                </div>
+
                                 <Button
                                     variant="outline"
                                     size="sm"
