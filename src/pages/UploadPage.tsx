@@ -172,6 +172,12 @@ const UploadPage = () => {
     }
   };
 
+  const handleUploadComplete = useCallback(() => {
+    toast.success('Processamento concluído!');
+    // Refresh history list
+    setHistoryRefreshTrigger(prev => prev + 1);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 md:p-8">
       <div className="mx-auto max-w-6xl space-y-8">
@@ -371,11 +377,7 @@ const UploadPage = () => {
             {uploadId && (
               <UploadProgressTracker
                 uploadId={uploadId}
-                onComplete={() => {
-                  toast.success('Processamento concluído!');
-                  // Refresh history list
-                  setHistoryRefreshTrigger(prev => prev + 1);
-                }}
+                onComplete={handleUploadComplete}
               />
             )}
           </div>
