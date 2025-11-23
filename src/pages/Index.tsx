@@ -197,14 +197,19 @@ const Index = () => {
           </Alert>
         )}
 
-        {/* Automation Progress Alert */}
-        {data?.is_running && data.automation_progress && (
-          <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
-            <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-pulse" />
-            <AlertTitle className="text-blue-900 dark:text-blue-100">
-              Automação em andamento
-            </AlertTitle>
-            <AlertDescription className="text-blue-800 dark:text-blue-200">
+
+        {/* Unified Progress Alert - Shows running automation OR general overview */}
+        <Alert className={data?.is_running
+          ? "bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800"
+          : "bg-gray-50 border-gray-200 dark:bg-gray-900 dark:border-gray-700"
+        }>
+          <Activity className={`h-4 w-4 ${data?.is_running ? 'text-blue-600 dark:text-blue-400 animate-pulse' : 'text-gray-600 dark:text-gray-400'}`} />
+          <AlertTitle className={data?.is_running ? "text-blue-900 dark:text-blue-100" : "text-gray-900 dark:text-gray-100"}>
+            {data?.is_running ? 'Automação em andamento' : 'Progresso Geral'}
+          </AlertTitle>
+          <AlertDescription className={data?.is_running ? "text-blue-800 dark:text-blue-200" : "text-gray-800 dark:text-gray-200"}>
+            {data?.is_running && data.automation_progress ? (
+              // RUNNING: Real-time automation progress
               <div className="mt-2 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span>Progresso: {data.automation_progress.processed}/{data.automation_progress.total}</span>
@@ -216,9 +221,37 @@ const Index = () => {
                   <span>✗ Erros: {data.automation_progress.errors}</span>
                 </div>
               </div>
-            </AlertDescription>
-          </Alert>
-        )}
+            ) : (
+              // IDLE: General overview from database
+              <div className="mt-2 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">
+                    {data?.cadastrados || 0} de {data?.total_cadastros || 0} cadastrados
+                  </span>
+                  <span className="font-bold">
+                    {progressPercentage.toFixed(1)}%
+                  </span>
+                </div>
+                <Progress value={progressPercentage} className="h-2" />
+                <div className="grid grid-cols-3 gap-3 text-center text-sm">
+                  <div>
+                    <p className="text-xl font-bold text-green-600">{data?.cadastrados || 0}</p>
+                    <p className="text-xs text-muted-foreground">Sucessos</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-orange-500">{data?.restantes || 0}</p>
+                    <p className="text-xs text-muted-foreground">Pendentes</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-red-600">{data?.errors || 0}</p>
+                    <p className="text-xs text-muted-foreground">Erros</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -465,46 +498,6 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* Progress Overview */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Progresso Geral
-            </CardTitle>
-            <CardDescription>
-              Visão geral do andamento dos cadastros
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">
-                  {data?.cadastrados || 0} de {data?.total_cadastros || 0} cadastrados
-                </span>
-                <span className="font-bold text-primary">
-                  {progressPercentage.toFixed(1)}%
-                </span>
-              </div>
-              <Progress value={progressPercentage} className="h-3" />
-              <div className="grid grid-cols-3 gap-4 pt-2">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">{data?.cadastrados || 0}</p>
-                  <p className="text-xs text-muted-foreground">Sucessos</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-600">{data?.restantes || 0}</p>
-                  <p className="text-xs text-muted-foreground">Pendentes</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-destructive">{data?.errors || 0}</p>
-                  <p className="text-xs text-muted-foreground">Erros</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Errors List */}
         {showErrors && errorsData && errorsData.length > 0 && (
