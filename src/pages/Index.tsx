@@ -222,7 +222,7 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Total de Cadastros */}
           <Card className="border-border shadow-md hover:shadow-lg transition-all duration-300 bg-card overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total de Cadastros
@@ -265,7 +265,7 @@ const Index = () => {
 
           {/* Concluídos */}
           <Card className="border-border shadow-md hover:shadow-lg transition-all duration-300 bg-card overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Concluídos
@@ -316,7 +316,7 @@ const Index = () => {
 
           {/* Restantes */}
           <Card className="border-border shadow-md hover:shadow-lg transition-all duration-300 bg-card overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Restantes
