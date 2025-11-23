@@ -192,7 +192,7 @@ const DataTablePage = () => {
                                             <TableRow>
                                                 {columns.map((column) => (
                                                     <TableHead key={column} className="min-w-[150px]">
-                                                        {column}
+                                                        {column === 'cadastrado_em' ? 'CADASTRADO' : column}
                                                     </TableHead>
                                                 ))}
                                             </TableRow>
