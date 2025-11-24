@@ -241,13 +241,13 @@ class WebAutomation:
                 with conn.cursor(cursor_factory=DictCursor) as cur:
                     # Use modulo to partition records across jobs
                     # Each job processes records where (id % total_jobs) == job_index
-                    query = f'''
-                        SELECT * FROM public."{self.tabela}"
+                    query = '''
+                        SELECT * FROM public."{}"
                         WHERE "PAINEL_NEW" IS NULL
                         AND (id % %s) = %s
                         ORDER BY "id" ASC
                         LIMIT %s
-                    '''
+                    '''.format(self.tabela)
                     
                     logging.info(f"🔎 Executando query para buscar registros pendentes...")
                     cur.execute(query, (self.total_jobs, self.job_index, self.batch_size))
