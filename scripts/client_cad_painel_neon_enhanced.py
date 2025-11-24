@@ -244,7 +244,7 @@ class WebAutomation:
                     query = '''
                         SELECT * FROM public."{}"
                         WHERE "PAINEL_NEW" IS NULL
-                        AND (id % %s) = %s
+                        AND (id %% %s) = %s
                         ORDER BY "id" ASC
                         LIMIT %s
                     '''.format(self.tabela)
