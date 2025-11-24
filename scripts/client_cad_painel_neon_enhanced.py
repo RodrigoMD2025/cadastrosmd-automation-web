@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import sys
 import requests
 import pandas as pd
 import psycopg2
@@ -15,14 +16,25 @@ import time
 # Carrega as variáveis de ambiente do arquivo .env (para uso local)
 load_dotenv()
 
-# Configuração do logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s: %(message)s",
-    datefmt='%d/%m/%Y %H:%M:%S',
-    filename='painel_novo_neon.log',
-    filemode='w',
+# Configuração do logging com handlers simultâneos (console + arquivo)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Formato comum para ambos os handlers
+formatter = logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s',
+    datefmt='%d/%m/%Y %H:%M:%S'
 )
+
+# Handler para arquivo (mantém funcionamento atual)
+file_handler = logging.FileHandler('painel_novo_neon.log', mode='w', encoding='utf-8')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+# Handler para console (NOVO - permite ver logs no GitHub Actions)
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
 
 class WebAutomation:
     def __init__(self):
@@ -57,6 +69,64 @@ class WebAutomation:
         ]
         if not all(required_vars):
             raise ValueError("Variáveis de ambiente obrigatórias não foram definidas.")
+        
+        # Logs detalhados de inicialização
+        logging.info("="*60)
+        logging.info("🚀 WebAutomation inicializada com sucesso")
+        logging.info(f"📊 Run ID: {self.run_id}")
+        logging.info(f"👤 Username: {self.login_username}")
+        logging.info(f"💾 Tabela: {self.tabela}")
+        logging.info(f"📦 Batch Size: {self.batch_size}")
+        logging.info(f"🔢 Job: {self.job_index + 1}/{self.total_jobs}")
+        logging.info(f"🗄️  Database: {self.database_url[:30]}...{self.database_url[-15:]}")
+        logging.info("="*60)
+
+    def testar_conexao_banco(self):
+        """Testa a conexão com o banco antes de iniciar o processamento"""
+        try:
+            logging.info("")
+            logging.info("🔌 Testando conexão com banco de dados...")
+            
+            with psycopg2.connect(self.database_url) as conn:
+                with conn.cursor() as cur:
+                    # Testa conexão simples
+                    cur.execute("SELECT version();")
+                    version = cur.fetchone()
+                    logging.info(f"✅ Conexão OK - PostgreSQL: {version[0][:50]}...")
+                    
+                    # Verifica se a tabela existe
+                    cur.execute(f"""
+                        SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_schema = 'public'
+                            AND table_name = %s
+                        );
+                    """, (self.tabela,))
+                    
+                    table_exists = cur.fetchone()[0]
+                    if not table_exists:
+                        raise ValueError(f"Tabela '{self.tabela}' não encontrada no banco")
+                    
+                    logging.info(f"✅ Tabela '{self.tabela}' encontrada")
+                    
+                    # Conta registros pendentes
+                    cur.execute(f"""
+                        SELECT COUNT(*) FROM public."{self.tabela}"
+                        WHERE "PAINEL_NEW" IS NULL
+                    """)
+                    
+                    total_pending = cur.fetchone()[0]
+                    logging.info(f"📊 Total de registros pendentes no banco: {total_pending}")
+                    logging.info("")
+                    
+                    return True
+                    
+        except Exception as e:
+            logging.error(f"❌ Falha ao testar conexão: {e}")
+            import traceback
+            logging.error(f"Stack trace:\n{traceback.format_exc()}")
+            return False
+
 
     def inicializar_progresso(self, total_records):
         """Inicializa o registro de progresso no banco"""
@@ -159,9 +229,15 @@ class WebAutomation:
     def buscar_dados_neon(self):
         """Busca dados pendentes da tabela no Neon com particionamento por job"""
         try:
-            logging.info(f"Buscando registros pendentes do Neon (Job {self.job_index + 1}/{self.total_jobs})...")
+            logging.info("")
+            logging.info("🔍 INICIANDO BUSCA DE DADOS NO NEON")
+            logging.info(f"   Tabela: {self.tabela}")
+            logging.info(f"   Job: {self.job_index + 1}/{self.total_jobs}")
+            logging.info(f"   Batch Size: {self.batch_size}")
             
             with psycopg2.connect(self.database_url) as conn:
+                logging.info("✅ Conexão com banco estabelecida com sucesso")
+                
                 with conn.cursor(cursor_factory=DictCursor) as cur:
                     # Use modulo to partition records across jobs
                     # Each job processes records where (id % total_jobs) == job_index
@@ -172,19 +248,42 @@ class WebAutomation:
                         ORDER BY "id" ASC
                         LIMIT %s
                     '''
+                    
+                    logging.info(f"🔎 Executando query para buscar registros pendentes...")
                     cur.execute(query, (self.total_jobs, self.job_index, self.batch_size))
                     dados = cur.fetchall()
 
                     if not dados:
-                        logging.info(f"Nenhum registro pendente encontrado para este job.")
+                        logging.warning(f"⚠️  Nenhum registro pendente encontrado para este job")
+                        logging.info("")
                         return pd.DataFrame()
                     
                     df = pd.DataFrame([dict(row) for row in dados])
-                    logging.info(f"Encontrados {len(df)} registros para processar neste job.")
+                    logging.info(f"✅ Encontrados {len(df)} registros para processar neste job")
+                    
+                    # Log de amostra dos primeiros registros
+                    if len(df) > 0:
+                        logging.info(f"📋 Primeiros registros:")
+                        for idx, row in df.head(3).iterrows():
+                            logging.info(f"   • ID {row.get('id')}: {row.get('ARTISTA')} - ISRC: {row.get('ISRC')}")
+                    
+                    logging.info("")
                     return df
                 
+        except psycopg2.Error as db_error:
+            logging.error("❌ ERRO DE BANCO DE DADOS")
+            logging.error(f"   Tipo: {type(db_error).__name__}")
+            logging.error(f"   Mensagem: {str(db_error)}")
+            import traceback
+            logging.error(f"   Stack trace:\n{traceback.format_exc()}")
+            return pd.DataFrame()
+            
         except Exception as e:
-            logging.error(f"Erro ao conectar com Neon: {e}")
+            logging.error("❌ ERRO AO CONECTAR COM NEON")
+            logging.error(f"   Tipo: {type(e).__name__}")
+            logging.error(f"   Mensagem: {str(e)}")
+            import traceback
+            logging.error(f"   Stack trace:\n{traceback.format_exc()}")
             return pd.DataFrame()
 
     def atualizar_status_neon(self, isrc, status='Cadastro OK'):
@@ -346,7 +445,10 @@ class WebAutomation:
     async def processar_lote_com_skip_retry(self, tabela_df):
         """Processa lote, skipa falhas, tenta novamente depois"""
         total_items = len(tabela_df)
-        logging.info(f"Iniciando cadastro de {total_items} faixas...")
+        logging.info("="*60)
+        logging.info(f"🎯 INICIANDO CADASTRO DE {total_items} FAIXAS")
+        logging.info("="*60)
+        logging.info("")
         
         # Primeira passagem - tenta todos
         for index, row in tqdm(tabela_df.iterrows(), total=total_items, desc="Processando"):
@@ -354,26 +456,32 @@ class WebAutomation:
             artista = row.get('ARTISTA')
             titulares = row.get('TITULARES')
             
+            logging.info(f"📀 [{self.total_processed + 1}/{total_items}] Processando: {artista}")
+            logging.info(f"   ISRC: {isrc}")
+            logging.info(f"   Titulares: {titulares}")
+            
             if not all([isrc, artista, titulares]):
-                logging.warning(f"Dados incompletos na linha {index}: ISRC={isrc}")
+                logging.warning(f"⚠️  Dados incompletos - pulando registro")
                 self.skipped_count += 1
                 continue
             
             # Health check a cada 10 registros
             if self.total_processed > 0 and self.total_processed % 10 == 0:
+                logging.info("🔍 Verificando conectividade...")
                 if not await self.verificar_conectividade():
-                    logging.error("Perda de conectividade detectada. Tentando reconectar...")
+                    logging.error("❌ Perda de conectividade detectada. Tentando reconectar...")
                     await asyncio.sleep(30)
                     if not await self.login():
-                        logging.error("Falha ao reconectar. Abortando...")
+                        logging.error("❌ Falha ao reconectar. Abortando...")
                         break
+                    logging.info("✅ Reconexão bem-sucedida")
             
             success, error_msg = await self.cadastrar_com_retry(row)
             
             if success:
                 self.atualizar_status_neon(isrc, 'Cadastro OK')
                 self.success_count += 1
-                logging.info(f"✓ ISRC {isrc} cadastrado com sucesso")
+                logging.info(f"✅ Cadastrado com sucesso!")
             else:
                 self.atualizar_status_neon(isrc, 'Erro no Cadastro')
                 self.error_count += 1
@@ -382,9 +490,14 @@ class WebAutomation:
                     isrc, artista, titulares,
                     'CadastroError', error_msg or 'Erro desconhecido'
                 )
-                logging.error(f"✗ ISRC {isrc} falhou: {error_msg}")
+                logging.error(f"❌ Falhou: {error_msg}")
             
             self.total_processed += 1
+            
+            # Log de progresso a cada 5 registros
+            if self.total_processed % 5 == 0:
+                logging.info(f"\n📊 Progresso: {self.total_processed}/{total_items} processados ({(self.total_processed/total_items*100):.1f}%)")
+                logging.info(f"   ✅ Sucessos: {self.success_count} | ❌ Erros: {self.error_count}\n")
             
             # Atualiza progresso a cada registro para sincronizar com KPI cards
             self.atualizar_progresso()
@@ -393,7 +506,7 @@ class WebAutomation:
         if self.failed_records:
             retry_count = len(self.failed_records)
             logging.info(f"\n{'='*60}")
-            logging.info(f"RETRY: {retry_count} registros falharam, tentando novamente...")
+            logging.info(f"🔄 RETRY: {retry_count} registros falharam, tentando novamente...")
             logging.info(f"{'='*60}\n")
             
             await asyncio.sleep(10)  # Espera antes de começar retry
@@ -401,6 +514,9 @@ class WebAutomation:
             retry_success = 0
             for row, prev_error in tqdm(self.failed_records, desc="Retry"):
                 isrc = row.get('ISRC')
+                artista = row.get('ARTISTA')
+                
+                logging.info(f"🔁 Retry: {artista} (ISRC: {isrc})")
                 
                 success, error_msg = await self.cadastrar_com_retry(row, max_retries=2)
                 
@@ -410,50 +526,74 @@ class WebAutomation:
                     self.success_count += 1
                     self.error_count -= 1
                     retry_success += 1
-                    logging.info(f"✓ RETRY OK: ISRC {isrc}")
+                    logging.info(f"✅ Retry bem-sucedido!")
                 else:
-                    logging.error(f"✗ RETRY FALHOU: ISRC {isrc}: {error_msg}")
+                    logging.error(f"❌ Retry falhou novamente: {error_msg}")
                 
                 self.atualizar_progresso()
             
-            logging.info(f"\nRETRY Completo: {retry_success}/{retry_count} recuperados")
+            logging.info(f"\n🔄 RETRY Completo: {retry_success}/{retry_count} recuperados\n")
 
     async def run_task_with_time_estimate(self):
+        # Testar conexão com banco antes de começar
+        logging.info("")
+        if not self.testar_conexao_banco():
+            error_msg = "Falha na conexão com banco de dados"
+            logging.error(f"❌ {error_msg}. Abortando execução.")
+            self.finalizar_progresso('failed', error_msg)
+            return
+        
+        logging.info("🔄 Buscando dados para processar...")
         tabela_df = self.buscar_dados_neon()
         
         if tabela_df.empty:
-            logging.info(f"Nenhum dado para processar. Finalizando...")
+            logging.info(f"ℹ️  Nenhum dado para processar. Finalizando...")
             self.finalizar_progresso('completed')
             return
 
         total_records = len(tabela_df)
+        logging.info(f"📦 Total de registros neste lote: {total_records}")
         self.inicializar_progresso(total_records)
+        logging.info("")
 
+        logging.info("🌐 Iniciando navegador...")
         await self.start_driver()
         
+        logging.info("🔐 Realizando login no painel...")
         if not await self.login():
-            self.finalizar_progresso('failed', 'Falha no login')
+            error_msg = 'Falha no login'
+            logging.error(f"❌ {error_msg}")
+            self.finalizar_progresso('failed', error_msg)
             await self.close_driver()
             return
+        
+        logging.info("✅ Login bem-sucedido, iniciando processamento...")
+        logging.info("")
 
         try:
             await self.processar_lote_com_skip_retry(tabela_df)
             
             self.finalizar_progresso('completed')
             logging.info(f"\n{'='*60}")
-            logging.info(f"RESULTADO FINAL:")
-            logging.info(f"  Total Processado: {self.total_processed}")
-            logging.info(f"  Sucessos: {self.success_count}")
-            logging.info(f"  Erros: {self.error_count}")
-            logging.info(f"  Pulados: {self.skipped_count}")
+            logging.info(f"🎉 RESULTADO FINAL:")
+            logging.info(f"  📊 Total Processado: {self.total_processed}")
+            logging.info(f"  ✅ Sucessos: {self.success_count}")
+            logging.info(f"  ❌ Erros: {self.error_count}")
+            logging.info(f"  ⏭️  Pulados: {self.skipped_count}")
+            if self.total_processed > 0:
+                taxa_sucesso = (self.success_count / self.total_processed * 100)
+                logging.info(f"  📈 Taxa de Sucesso: {taxa_sucesso:.1f}%")
             logging.info(f"{'='*60}\n")
             
             await self.send_telegram_notification()
             
         except Exception as e:
-            logging.error(f"Erro crítico durante processamento: {e}")
+            logging.error(f"❌ Erro crítico durante processamento: {e}")
+            import traceback
+            logging.error(f"Stack trace:\n{traceback.format_exc()}")
             self.finalizar_progresso('failed', str(e))
         finally:
+            logging.info("🚪 Fechando navegador...")
             await self.close_driver()
 
     async def send_telegram_notification(self):
@@ -486,13 +626,42 @@ Por favor, validar logs para detalhes.'''
 
 async def main():
     try:
+        logging.info("🎬 Iniciando aplicação de automação...")
+        logging.info("")
+        
         web_automation = WebAutomation()
-        logging.info(f"Iniciando automação (Run ID: {web_automation.run_id})...")
+        logging.info("✅ Todas as variáveis de ambiente validadas")
+        logging.info("")
+        
+        logging.info("▶️  Executando tarefa principal...")
         await web_automation.run_task_with_time_estimate()
+        
+        logging.info("")
+        logging.info("✅ Aplicação finalizada com sucesso")
+        
     except ValueError as e:
-        logging.error(f"Erro de configuração: {e}")
+        logging.error("="*60)
+        logging.error("❌ ERRO DE CONFIGURAÇÃO")
+        logging.error(f"   {str(e)}")
+        logging.error("="*60)
+        print(f"\n❌ ERRO CRÍTICO DE CONFIGURAÇÃO: {e}\n", file=sys.stderr)
+        sys.exit(1)
+        
     except Exception as e:
-        logging.error(f"Erro inesperado: {e}")
+        logging.error("="*60)
+        logging.error("❌ ERRO INESPERADO")
+        logging.error(f"   Tipo: {type(e).__name__}")
+        logging.error(f"   Mensagem: {str(e)}")
+        logging.error("="*60)
+        
+        import traceback
+        stack_trace = traceback.format_exc()
+        logging.error(f"\n📋 Stack Trace Completo:\n{stack_trace}")
+        
+        print(f"\n❌ ERRO INESPERADO: {e}\n", file=sys.stderr)
+        print(stack_trace, file=sys.stderr)
+        
+        sys.exit(1)
 
 if __name__ == "__main__":
     asyncio.run(main())
