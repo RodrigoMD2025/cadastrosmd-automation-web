@@ -239,18 +239,20 @@ class WebAutomation:
                 logging.info("✅ Conexão com banco estabelecida com sucesso")
                 
                 with conn.cursor(cursor_factory=DictCursor) as cur:
-                    # Use modulo to partition records across jobs
-                    # Each job processes records where (id % total_jobs) == job_index
+                    # Particionamento por OFFSET/LIMIT (funciona com UUID)
+                    # Cada job processa uma fatia dos dados usando OFFSET
+                    offset = self.job_index * self.batch_size
+                    
                     query = '''
                         SELECT * FROM public."{}"
                         WHERE "PAINEL_NEW" IS NULL
-                        AND (id %% %s) = %s
                         ORDER BY "id" ASC
-                        LIMIT %s
+                        LIMIT %s OFFSET %s
                     '''.format(self.tabela)
                     
                     logging.info(f"🔎 Executando query para buscar registros pendentes...")
-                    cur.execute(query, (self.total_jobs, self.job_index, self.batch_size))
+                    logging.info(f"   OFFSET: {offset}, LIMIT: {self.batch_size}")
+                    cur.execute(query, (self.batch_size, offset))
                     dados = cur.fetchall()
 
                     if not dados:
