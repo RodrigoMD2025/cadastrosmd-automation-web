@@ -5,11 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
-  Upload, Database, CheckCircle, Clock, BarChart3, Activity, Play,
-  AlertCircle, Wifi, WifiOff, RefreshCw, X
+  Upload, CheckCircle, BarChart3, Activity, Play,
+  AlertCircle, RefreshCw, X
 } from "lucide-react";
 import { toast } from "sonner";
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  ResponsiveContainer, Tooltip
+} from "recharts";
 import { UploadDialog } from "@/components/UploadDialog";
 import {
   Table,
@@ -60,10 +63,22 @@ interface AutomationError {
   should_retry: boolean;
 }
 
+interface TimelinePoint {
+  date: string;
+  total: number;
+}
+
 const fetchAutomationStatus = async (): Promise<AutomationStatus> => {
   const response = await fetch(`${API_URL}/api/automation/status`);
   if (!response.ok) throw new Error('Failed to fetch automation status');
   return response.json();
+};
+
+const fetchTimeline = async (): Promise<TimelinePoint[]> => {
+  const response = await fetch(`${API_URL}/api/automation/timeline?days=14`);
+  if (!response.ok) throw new Error('Failed to fetch timeline');
+  const data = await response.json();
+  return data.data || [];
 };
 
 const fetchAutomationErrors = async () => {
@@ -91,6 +106,13 @@ const Index = () => {
     queryFn: fetchAutomationErrors,
     enabled: (data?.recent_errors || 0) > 0,
     refetchInterval: 5000,
+  });
+
+  // Busca histórico dos últimos cadastros para o gráfico de linha
+  const { data: timelineData } = useQuery<TimelinePoint[]>({
+    queryKey: ['automationTimeline'],
+    queryFn: fetchTimeline,
+    refetchInterval: 30000,
   });
 
   // Mutation para iniciar automação
@@ -220,22 +242,40 @@ const Index = () => {
               Monitoramento e controle de cadastros
             </p>
           </div>
-          <Button
-            onClick={() => {
-              console.log('🔄 Atualizando dashboard...');
-              // Invalida todas as queries para forçar refetch completo
-              queryClient.invalidateQueries();
-              // Também força refetch da query principal
-              refetch();
-              toast.success('Dashboard atualizado!');
-            }}
-            variant="outline"
-            size="sm"
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                queryClient.invalidateQueries();
+                refetch();
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full border bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-transparent dark:text-green-400 dark:border-green-500/40 dark:hover:bg-green-500/10 transition-colors"
+              aria-label="Verificar status do sistema"
+              title="Status do sistema: Online"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              Online
+            </button>
+            <Button
+              onClick={() => {
+                console.log('🔄 Atualizando dashboard...');
+                // Invalida todas as queries para forçar refetch completo
+                queryClient.invalidateQueries();
+                // Também força refetch da query principal
+                refetch();
+                toast.success('Dashboard atualizado!');
+              }}
+              variant="outline"
+              size="sm"
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
         {/* Error Alert */}
@@ -252,229 +292,128 @@ const Index = () => {
         )}
 
 
-        {/* Unified Progress Alert - Shows provisioning, running automation OR general overview */}
-        <Alert className={data?.is_running
-          ? "bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800"
-          : "bg-gray-50 border-gray-200 dark:bg-gray-900 dark:border-gray-700"
-        }>
-          <Activity className={`h-4 w-4 ${data?.is_running ? 'text-blue-600 dark:text-blue-400 animate-pulse' : 'text-gray-600 dark:text-gray-400'}`} />
-          <AlertTitle className={`${data?.is_running ? "text-blue-900 dark:text-blue-100" : "text-gray-900 dark:text-gray-100"} flex items-center justify-between`}>
-            <span>
-              {isProvisioning ? '⚙️ Provisionando...' : data?.is_running ? 'Automação em andamento' : 'Progresso Geral'}
-            </span>
-            {data?.is_running && (
-              <div className="flex gap-4 text-sm font-mono">
-                <span>⏱️ {formatElapsedTime(elapsedTime)}</span>
-                {eta !== null && (
-                  <span className="text-muted-foreground">
-                    🏁 ETA: {formatElapsedTime(eta)}
-                  </span>
-                )}
-              </div>
-            )}
-          </AlertTitle>
-          <AlertDescription className={data?.is_running ? "text-blue-800 dark:text-blue-200" : "text-gray-800 dark:text-gray-200"}>
-            {isProvisioning ? (
-              // PROVISIONING: Aguardando GitHub Actions preparar ambiente
-              <div className="mt-2 space-y-2">
-                <p className="text-sm">
-                  Preparando ambiente de execução... Isso pode levar alguns minutos.
-                </p>
-                <Progress value={0} className="h-2 animate-pulse" />
-              </div>
-            ) : data?.is_running && data.automation_progress ? (
-              // RUNNING: Real-time automation progress
-              <div className="mt-2 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Progresso: {data.automation_progress.processed}/{data.automation_progress.total}</span>
-                  <span className="font-bold">{Math.round((data.automation_progress.processed / data.automation_progress.total) * 100)}%</span>
+        {/* Progresso e Controle em 2 colunas */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          {/* Progresso Geral */}
+          <Alert className={`h-full p-2.5 ${data?.is_running
+            ? "bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800"
+            : "bg-gray-50 border-gray-200 dark:bg-gray-900 dark:border-gray-700"
+          }`}>
+            <Activity className={`h-4 w-4 ${data?.is_running ? 'text-blue-600 dark:text-blue-400 animate-pulse' : 'text-gray-600 dark:text-gray-400'}`} />
+            <AlertTitle className={`${data?.is_running ? "text-blue-900 dark:text-blue-100" : "text-gray-900 dark:text-gray-100"} flex items-center justify-between`}>
+              <span>
+                {isProvisioning ? '⚙️ Provisionando...' : data?.is_running ? 'Automação em andamento' : 'Progresso Geral'}
+              </span>
+              {data?.is_running && (
+                <div className="flex gap-4 text-sm font-mono">
+                  <span>⏱️ {formatElapsedTime(elapsedTime)}</span>
+                  {eta !== null && (
+                    <span className="text-muted-foreground">
+                      🏁 ETA: {formatElapsedTime(eta)}
+                    </span>
+                  )}
                 </div>
-                <Progress value={(data.automation_progress.processed / data.automation_progress.total) * 100} className="h-2" />
-                <div className="flex gap-4 text-xs">
-                  <span>✓ Sucessos: {data.automation_progress.success}</span>
-                  <span>✗ Erros: {data.automation_progress.errors}</span>
-                </div>
-              </div>
-            ) : (
-              // IDLE: General overview from database
-              <div className="mt-2 space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">
-                    {data?.cadastrados || 0} de {data?.total_cadastros || 0} cadastrados
-                  </span>
-                  <span className="font-bold">
-                    {progressPercentage.toFixed(1)}%
-                  </span>
-                </div>
-                <Progress value={progressPercentage} className="h-2" />
-                <div className="grid grid-cols-3 gap-3 text-center text-sm">
-                  <div>
-                    <p className="text-xl font-bold text-green-600">{data?.cadastrados || 0}</p>
-                    <p className="text-xs text-muted-foreground">Sucessos</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-orange-500">{data?.restantes || 0}</p>
-                    <p className="text-xs text-muted-foreground">Pendentes</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-red-600">{data?.errors || 0}</p>
-                    <p className="text-xs text-muted-foreground">Erros</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </AlertDescription>
-        </Alert>
-
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Total de Cadastros */}
-          <Card className="border-border shadow-md hover:shadow-lg transition-all duration-300 bg-card overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total de Cadastros
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Database className="h-5 w-5 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="text-3xl font-bold text-foreground">
-                    {isLoading ? (
-                      <div className="h-9 w-20 bg-muted animate-pulse rounded"></div>
-                    ) : (
-                      data?.total_cadastros.toLocaleString('pt-BR') ?? 0
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">Cadastros no Painel</p>
-                </div>
-                <ResponsiveContainer width={80} height={80}>
-                  <PieChart>
-                    <Pie
-                      data={[{ value: 100 }]}
-                      dataKey="value"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={25}
-                      outerRadius={35}
-                      startAngle={90}
-                      endAngle={-270}
-                    >
-                      <Cell fill="hsl(var(--primary))" />
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Concluídos */}
-          <Card className="border-border shadow-md hover:shadow-lg transition-all duration-300 bg-card overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Concluídos
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              </div>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="text-3xl font-bold text-foreground">
-                    {isLoading ? (
-                      <div className="h-9 w-20 bg-muted animate-pulse rounded"></div>
-                    ) : (
-                      data?.cadastrados.toLocaleString('pt-BR') ?? 0
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {data && data.total_cadastros > 0
-                      ? `${((data.cadastrados / data.total_cadastros) * 100).toFixed(1)}% do total`
-                      : 'Aguardando dados'}
+              )}
+            </AlertTitle>
+            <AlertDescription className={data?.is_running ? "text-blue-800 dark:text-blue-200" : "text-gray-800 dark:text-gray-200"}>
+              {isProvisioning ? (
+                // PROVISIONING: Aguardando GitHub Actions preparar ambiente
+                <div className="mt-2 space-y-2">
+                  <p className="text-sm">
+                    Preparando ambiente de execução... Isso pode levar alguns minutos.
                   </p>
+                  <Progress value={0} className="h-2 animate-pulse" />
                 </div>
-                <ResponsiveContainer width={80} height={80}>
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { value: data?.cadastrados || 0 },
-                        { value: (data?.total_cadastros || 0) - (data?.cadastrados || 0) }
-                      ]}
-                      dataKey="value"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={25}
-                      outerRadius={35}
-                      startAngle={90}
-                      endAngle={-270}
-                    >
-                      <Cell fill="#16a34a" />  {/* Verde vibrante */}
-                      <Cell fill="#e5e7eb" />  {/* Cinza claro */}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Restantes */}
-          <Card className="border-border shadow-md hover:shadow-lg transition-all duration-300 bg-card overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Restantes
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-orange-500/10">
-                <Clock className="h-5 w-5 text-orange-600" />
-              </div>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="text-3xl font-bold text-foreground">
-                    {isLoading ? (
-                      <div className="h-9 w-20 bg-muted animate-pulse rounded"></div>
-                    ) : (
-                      data?.restantes.toLocaleString('pt-BR') ?? 0
-                    )}
+              ) : data?.is_running && data.automation_progress ? (
+                // RUNNING: Real-time automation progress
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Progresso: {data.automation_progress.processed}/{data.automation_progress.total}</span>
+                    <span className="font-bold">{Math.round((data.automation_progress.processed / data.automation_progress.total) * 100)}%</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">Pendentes de cadastro</p>
+                  <Progress value={(data.automation_progress.processed / data.automation_progress.total) * 100} className="h-2" />
+                  <div className="flex gap-4 text-xs">
+                    <span>✓ Sucessos: {data.automation_progress.success}</span>
+                    <span>✗ Erros: {data.automation_progress.errors}</span>
+                  </div>
                 </div>
-                <ResponsiveContainer width={80} height={80}>
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { value: data?.restantes || 0 },
-                        { value: (data?.cadastrados || 0) }
-                      ]}
-                      dataKey="value"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={25}
-                      outerRadius={35}
-                      startAngle={90}
-                      endAngle={-270}
-                    >
-                      <Cell fill="#f97316" />  {/* Laranja vibrante */}
-                      <Cell fill="#e5e7eb" />  {/* Cinza claro */}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              ) : (
+                // IDLE: General overview from database
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">
+                      {data?.cadastrados || 0} de {data?.total_cadastros || 0} cadastrados
+                    </span>
+                    <span className="font-bold">
+                      {progressPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress value={progressPercentage} className="h-2" />
+                  <div className="grid grid-cols-3 gap-3 text-center text-sm">
+                    <div>
+                      <p className="text-base font-bold text-green-600">{data?.cadastrados || 0}</p>
+                      <p className="text-xs text-muted-foreground">Sucessos</p>
+                    </div>
+                    <div>
+                      <p className="text-base font-bold text-orange-500">{data?.restantes || 0}</p>
+                      <p className="text-xs text-muted-foreground">Pendentes</p>
+                    </div>
+                    <div>
+                      <p className="text-base font-bold text-red-600">{data?.errors || 0}</p>
+                      <p className="text-xs text-muted-foreground">Erros</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </AlertDescription>
 
-        {/* Automation Control & System Status */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Automation Control */}
-          <Card>
+            {/* Máquinas Docker em uso */}
+            <div className="mt-3 pt-3 border-t border-foreground/10">
+              <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${data?.is_running ? 'animate-ping bg-green-400' : 'bg-gray-300'}`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${data?.is_running ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                </span>
+                Máquinas Docker em uso
+              </p>
+              <div className="flex items-center justify-between gap-3">
+                {[1, 2, 3, 4].map((n) => (
+                  <div
+                    key={n}
+                    className={`relative flex-1 flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all duration-500 ${
+                      data?.is_running
+                        ? 'bg-green-500/15 border-green-500/40 shadow-[0_0_10px_rgba(34,197,94,0.4)]'
+                        : 'bg-muted/40 border-transparent opacity-40'
+                    }`}
+                  >
+                    {data?.is_running && (
+                      <span className="absolute -top-0.5 right-0.5 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                      </span>
+                    )}
+                    <svg
+                      viewBox="0 0 24 24"
+                      className={`w-6 h-6 ${data?.is_running ? 'text-green-600' : 'text-muted-foreground'}`}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
+                      <rect x="3" y="4" width="18" height="10" rx="2" />
+                      <path d="M2 14h20v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3z" />
+                      <path d="M9 21h6" />
+                    </svg>
+                    <span className={`text-xs leading-none font-semibold ${data?.is_running ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      {n}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Alert>
+
+          {/* Controle de Automação */}
+          <Card className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Play className="h-5 w-5" />
@@ -484,7 +423,7 @@ const Index = () => {
                 Inicie o processo de cadastro automático no MusicDelivery
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 flex-1">
               <Button
                 onClick={() => {
                   console.log('🔵 Iniciando automação...');
@@ -518,47 +457,9 @@ const Index = () => {
                   <AlertTitle>Tudo pronto!</AlertTitle>
                   <AlertDescription>
                     Todos os registros foram processados.
-                  </AlertDescription>
-                </Alert>
+</AlertDescription>
+          </Alert>
               )}
-            </CardContent>
-          </Card>
-
-          {/* System Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Status do Sistema
-              </CardTitle>
-              <CardDescription>
-                Monitoramento de saúde e conectividade
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <div className="flex items-center gap-2">
-                  {data?.connectivity_status === 'online' ? (
-                    <Wifi className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <WifiOff className="h-4 w-4 text-destructive" />
-                  )}
-                  <span className="text-sm font-medium">Conectividade</span>
-                </div>
-                <Badge variant={data?.connectivity_status === 'online' ? 'default' : 'destructive'}>
-                  {data?.connectivity_status === 'online' ? 'Online' : 'Offline'}
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className={`h-4 w-4 ${(data?.recent_errors || 0) > 0 ? 'text-orange-600' : 'text-green-600'}`} />
-                  <span className="text-sm font-medium">Falhas Recentes (24h)</span>
-                </div>
-                <Badge variant={(data?.recent_errors || 0) > 0 ? 'destructive' : 'default'}>
-                  {data?.recent_errors || 0}
-                </Badge>
-              </div>
 
               {(data?.errors || 0) > 0 && (
                 <Button
@@ -572,6 +473,70 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Histórico de Cadastros - gráfico de linha */}
+        <Card className="border-border shadow-md hover:shadow-lg transition-all duration-300 bg-card overflow-hidden">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Histórico de Cadastros
+            </CardTitle>
+            <CardDescription>
+              Cadastros concluídos por dia nos últimos 14 dias
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!timelineData ? (
+              <div className="h-64 bg-muted animate-pulse rounded-lg"></div>
+            ) : timelineData.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem dados suficientes para o gráfico</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart
+                  data={timelineData}
+                  margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="colorCadastros" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#16a34a" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(value: string) => {
+                      const d = new Date(value);
+                      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    }}
+                    minTickGap={24}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    allowDecimals={false}
+                    tickFormatter={(value: number) => value.toLocaleString('pt-BR')}
+                  />
+                  <Tooltip
+                    formatter={(value: number | string) => [value.toLocaleString('pt-BR'), 'Cadastros']}
+                    labelFormatter={(label: string) =>
+                      new Date(label).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    }
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="total"
+                    stroke="#16a34a"
+                    strokeWidth={2}
+                    fill="url(#colorCadastros)"
+                    dot={{ r: 3, fill: "#16a34a", strokeWidth: 0 }}
+                    activeDot={{ r: 5 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Errors List */}
         {showErrors && errorsData && errorsData.length > 0 && (
