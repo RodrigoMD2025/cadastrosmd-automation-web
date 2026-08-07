@@ -83,16 +83,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
     const recentErrors = parseInt(recentErrorsResult.rows[0].recent_errors, 10);
 
-    // Modo timeline: retorna apenas o histórico diário de cadastros concluídos
+    // Modo timeline: retorna o histórico diário de cadastros concluídos
     if (req.query.view === 'timeline') {
-      const days = parseInt(String(req.query.days || '14'), 10);
-      const numDays = Number.isFinite(days) && days > 0 && days <= 90 ? days : 14;
+      // Janela dinâmica: do primeiro cadastro até hoje (ou um limite opcional via ?days=)
+      const rangeResult = await client.query(
+        `SELECT MIN("CADASTRADO")::date AS first_date, MAX("CADASTRADO")::date AS last_date
+         FROM public."${tabela}"
+         WHERE "CADASTRADO" IS NOT NULL`
+      );
+      const firstDate = rangeResult.rows[0]?.first_date;
+      const lastDate = rangeResult.rows[0]?.last_date || new Date();
+
+      let startDate: string;
+      if (firstDate) {
+        const span = (new Date(lastDate).getTime() - new Date(firstDate).getTime()) / 86400000;
+        startDate = firstDate;
+        const explicitDays = parseInt(String(req.query.days || ''), 10);
+        const cap = 180; // limite de segurança de pontos no gráfico
+        if (explicitDays > 0) {
+          // janela fixa: últimos N dias
+          startDate = new Date(new Date(lastDate).getTime() - explicitDays * 86400000).toISOString().slice(0, 10);
+        } else if (span > cap) {
+          // se o histórico for muito antigo, restringe aos cap dias mais recentes
+          startDate = new Date(new Date(lastDate).getTime() - cap * 86400000).toISOString().slice(0, 10);
+        }
+      } else {
+        startDate = new Date().toISOString().slice(0, 10);
+      }
 
       const timelineResult = await client.query(
         `WITH RECURSIVE days AS (
            SELECT generate_series(
-             CURRENT_DATE - ($1::int - 1),
-             CURRENT_DATE,
+             $1::date,
+             COALESCE($2::date, CURRENT_DATE),
              interval '1 day'
            )::date AS day
          )
@@ -105,7 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           AND c."PAINEL_NEW" = 'Cadastro OK'
          GROUP BY d.day
          ORDER BY d.day ASC`,
-        [numDays]
+        [startDate, lastDate]
       );
 
       const timeline = timelineResult.rows.map(row => ({
@@ -115,7 +138,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({
         success: true,
-        days: numDays,
         data: timeline
       });
     }

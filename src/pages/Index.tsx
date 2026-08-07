@@ -75,7 +75,7 @@ const fetchAutomationStatus = async (): Promise<AutomationStatus> => {
 };
 
 const fetchTimeline = async (): Promise<TimelinePoint[]> => {
-  const response = await fetch(`${API_URL}/api/automation/status?view=timeline&days=14`);
+  const response = await fetch(`${API_URL}/api/automation/status?view=timeline`);
   if (!response.ok) throw new Error('Failed to fetch timeline');
   const data = await response.json();
   return data.data || [];
@@ -482,7 +482,7 @@ const Index = () => {
               Histórico de Cadastros
             </CardTitle>
             <CardDescription>
-              Cadastros concluídos por dia nos últimos 14 dias
+              Cadastros concluídos por dia desde o primeiro registro
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -508,9 +508,9 @@ const Index = () => {
                     tick={{ fontSize: 11 }}
                     tickFormatter={(value: string) => {
                       const d = new Date(value);
-                      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                      return d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
                     }}
-                    minTickGap={24}
+                    minTickGap={28}
                   />
                   <YAxis
                     tick={{ fontSize: 11 }}
