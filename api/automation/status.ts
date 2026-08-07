@@ -83,6 +83,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
     const recentErrors = parseInt(recentErrorsResult.rows[0].recent_errors, 10);
 
+    // Modo timeline: retorna apenas o histórico diário de cadastros concluídos
+    if (req.query.view === 'timeline') {
+      const days = parseInt(String(req.query.days || '14'), 10);
+      const numDays = Number.isFinite(days) && days > 0 && days <= 90 ? days : 14;
+
+      const timelineResult = await client.query(
+        `WITH RECURSIVE days AS (
+           SELECT generate_series(
+             CURRENT_DATE - ($1::int - 1),
+             CURRENT_DATE,
+             interval '1 day'
+           )::date AS day
+         )
+         SELECT
+           to_char(d.day, 'YYYY-MM-DD') AS date,
+           COALESCE(COUNT(c."CADASTRADO"), 0) AS total
+         FROM days d
+         LEFT JOIN public."${tabela}" c
+           ON c."CADASTRADO"::date = d.day
+          AND c."PAINEL_NEW" = 'Cadastro OK'
+         GROUP BY d.day
+         ORDER BY d.day ASC`,
+        [numDays]
+      );
+
+      const timeline = timelineResult.rows.map(row => ({
+        date: row.date,
+        total: parseInt(row.total, 10)
+      }));
+
+      return res.status(200).json({
+        success: true,
+        days: numDays,
+        data: timeline
+      });
+    }
+
     return res.status(200).json({
       success: true,
       total_cadastros: total,

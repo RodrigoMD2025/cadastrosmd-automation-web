@@ -75,7 +75,7 @@ const fetchAutomationStatus = async (): Promise<AutomationStatus> => {
 };
 
 const fetchTimeline = async (): Promise<TimelinePoint[]> => {
-  const response = await fetch(`${API_URL}/api/automation/timeline?days=14`);
+  const response = await fetch(`${API_URL}/api/automation/status?view=timeline&days=14`);
   if (!response.ok) throw new Error('Failed to fetch timeline');
   const data = await response.json();
   return data.data || [];
