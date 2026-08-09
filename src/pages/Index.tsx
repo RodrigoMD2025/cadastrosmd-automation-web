@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,6 +114,12 @@ const Index = () => {
     queryFn: fetchTimeline,
     refetchInterval: 30000,
   });
+
+  // Apenas dias com cadastros concluídos para otimizar a visualização do gráfico
+  const timelineChartData = useMemo(
+    () => (timelineData || []).filter(point => point.total > 0),
+    [timelineData]
+  );
 
   // Mutation para iniciar automação
   const startAutomation = useMutation({
@@ -488,12 +494,12 @@ const Index = () => {
           <CardContent>
             {!timelineData ? (
               <div className="h-64 bg-muted animate-pulse rounded-lg"></div>
-            ) : timelineData.length === 0 ? (
+            ) : timelineChartData.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sem dados suficientes para o gráfico</p>
             ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart
-                  data={timelineData}
+                  data={timelineChartData}
                   margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
                 >
                   <defs>
