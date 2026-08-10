@@ -121,6 +121,34 @@ const Index = () => {
     [timelineData]
   );
 
+  // Estatísticas resumidas dos cadastros para a legenda do gráfico
+  const timelineStats = useMemo(() => {
+    if (timelineChartData.length === 0) return null;
+
+    const formatDate = (date: string) =>
+      new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+    const total = timelineChartData.reduce((sum, p) => sum + p.total, 0);
+    const media = Math.round(total / timelineChartData.length);
+
+    let recorde = timelineChartData[0];
+    let menor = timelineChartData[0];
+    for (const p of timelineChartData) {
+      if (p.total > recorde.total) recorde = p;
+      if (p.total < menor.total) menor = p;
+    }
+
+    let maiorSalto: { valor: number; de: string; para: string } | null = null;
+    for (let i = 1; i < timelineChartData.length; i++) {
+      const diff = timelineChartData[i].total - timelineChartData[i - 1].total;
+      if (diff > 0 && (!maiorSalto || diff > maiorSalto.valor)) {
+        maiorSalto = { valor: diff, de: timelineChartData[i - 1].date, para: timelineChartData[i].date };
+      }
+    }
+
+    return { total, media, recorde, menor, maiorSalto, formatDate };
+  }, [timelineChartData]);
+
   // Mutation para iniciar automação
   const startAutomation = useMutation({
     mutationFn: async () => {
@@ -497,7 +525,19 @@ const Index = () => {
             ) : timelineChartData.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sem dados suficientes para o gráfico</p>
             ) : (
-              <ResponsiveContainer width="100%" height={280}>
+              <>
+                <div className="flex flex-wrap items-center justify-center gap-2 pb-4">
+                  <Badge variant="secondary">📈 Total {timelineStats?.total.toLocaleString('pt-BR')}</Badge>
+                  <Badge variant="secondary">📊 Média/dia {timelineStats?.media.toLocaleString('pt-BR')}</Badge>
+                  <Badge variant="secondary">🏆 Recorde {timelineStats?.recorde.total.toLocaleString('pt-BR')} ({timelineStats?.formatDate(timelineStats.recorde.date)})</Badge>
+                  <Badge variant="secondary">📉 Menor {timelineStats?.menor.total.toLocaleString('pt-BR')} ({timelineStats?.formatDate(timelineStats.menor.date)})</Badge>
+                  {timelineStats?.maiorSalto && (
+                    <Badge variant="secondary">
+                      ▲ Maior salto +{timelineStats.maiorSalto.valor.toLocaleString('pt-BR')} ({timelineStats.formatDate(timelineStats.maiorSalto.de)} → {timelineStats.formatDate(timelineStats.maiorSalto.para)})
+                    </Badge>
+                  )}
+                </div>
+                <ResponsiveContainer width="100%" height={280}>
                 <AreaChart
                   data={timelineChartData}
                   margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -514,7 +554,7 @@ const Index = () => {
                     tick={{ fontSize: 11 }}
                     tickFormatter={(value: string) => {
                       const d = new Date(value);
-                      return d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+                      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
                     }}
                     minTickGap={28}
                   />
@@ -539,7 +579,8 @@ const Index = () => {
                     activeDot={{ r: 5 }}
                   />
                 </AreaChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              </>
             )}
           </CardContent>
         </Card>
