@@ -103,14 +103,24 @@ const DataTablePage = () => {
     };
 
     // Export functions
+    // Busca os dados para exportação respeitando o filtro ativo
+    const fetchDataForExport = async () => {
+        const params = new URLSearchParams({ limit: '10000' });
+        if (debouncedSearch) {
+            params.append('search', debouncedSearch);
+        }
+
+        const response = await fetch(`${API_URL}/api/cadastros?${params}`);
+        if (!response.ok) throw new Error('Erro ao buscar dados para export');
+
+        return response.json();
+    };
+
     const exportToCSV = async () => {
         setIsExporting(true);
         try {
             // Fetch all data for export
-            const response = await fetch(`${API_URL}/api/cadastros?limit=10000`);
-            if (!response.ok) throw new Error('Erro ao buscar dados para export');
-
-            const result = await response.json();
+            const result = await fetchDataForExport();
             const exportData = result.data;
             const exportColumns = result.columns.filter((col: string) => !['#', 'id'].includes(col.toLowerCase()));
 
@@ -156,10 +166,7 @@ const DataTablePage = () => {
     const exportToExcel = async () => {
         setIsExporting(true);
         try {
-            const response = await fetch(`${API_URL}/api/cadastros?limit=10000`);
-            if (!response.ok) throw new Error('Erro ao buscar dados para export');
-
-            const result = await response.json();
+            const result = await fetchDataForExport();
             const exportData = result.data;
             const exportColumns = result.columns.filter((col: string) => !['#', 'id'].includes(col.toLowerCase()));
 
@@ -198,10 +205,7 @@ const DataTablePage = () => {
     const exportToPDF = async () => {
         setIsExporting(true);
         try {
-            const response = await fetch(`${API_URL}/api/cadastros?limit=10000`);
-            if (!response.ok) throw new Error('Erro ao buscar dados para export');
-
-            const result = await response.json();
+            const result = await fetchDataForExport();
             const exportData = result.data;
             const exportColumns = result.columns.filter((col: string) => !['#', 'id'].includes(col.toLowerCase()));
 
