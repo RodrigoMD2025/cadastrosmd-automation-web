@@ -1,6 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Client } from 'pg';
 
+// Converte datas no formato brasileiro (dd/mm/aaaa ou dd-mm-aaaa) para ISO (aaaa-mm-dd)
+function normalizeSearchTerm(term: string): string {
+    const match = term.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+    if (!match) return term;
+
+    const [, day, month, year] = match;
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // CORS headers
     const origin = req.headers.origin || '';
@@ -69,8 +79,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const params: any[] = [];
 
         if (search && typeof search === 'string' && search.trim()) {
-            const searchConditions = columns.map((col, idx) => {
-                params.push(`%${search.trim()}%`);
+            const normalizedSearch = normalizeSearchTerm(search.trim());
+            const searchConditions = columns.map((col) => {
+                params.push(`%${normalizedSearch}%`);
                 return `LOWER(CAST("${col}" AS TEXT)) LIKE LOWER($${params.length})`;
             });
             whereClause = `WHERE ${searchConditions.join(' OR ')}`;
