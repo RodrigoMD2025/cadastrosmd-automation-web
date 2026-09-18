@@ -64,10 +64,17 @@ interface AutomationError {
   should_retry: boolean;
 }
 
-interface TimelinePoint {
-  date: string;
-  total: number;
+interface UploadPoint {
+  upload_id: string;
+  file_name: string;
+  total_records: number;
+  success_count: number;
+  error_count: number;
+  started_at: string;
 }
+
+// Quantidade de remessas (uploads) mantidas no gráfico de linha
+const MAX_UPLOAD_POINTS = 4;
 
 const fetchAutomationStatus = async (): Promise<AutomationStatus> => {
   const response = await fetch(`${API_URL}/api/automation/status`);
@@ -75,11 +82,12 @@ const fetchAutomationStatus = async (): Promise<AutomationStatus> => {
   return response.json();
 };
 
-const fetchTimeline = async (): Promise<TimelinePoint[]> => {
-  const response = await fetch(`${API_URL}/api/automation/status?view=timeline`);
-  if (!response.ok) throw new Error('Failed to fetch timeline');
+const fetchRecentUploads = async (): Promise<UploadPoint[]> => {
+  const response = await fetch(`${API_URL}/api/upload-history?limit=${MAX_UPLOAD_POINTS}`);
+  if (!response.ok) throw new Error('Failed to fetch recent uploads');
   const data = await response.json();
-  return data.data || [];
+  // A API retorna do mais recente para o mais antigo; inverte para o gráfico
+  return (data.data || []).slice(0, MAX_UPLOAD_POINTS).reverse();
 };
 
 const fetchAutomationErrors = async () => {
@@ -87,6 +95,39 @@ const fetchAutomationErrors = async () => {
   if (!response.ok) throw new Error('Failed to fetch errors');
   const data = await response.json();
   return data.errors || [];
+};
+
+interface UploadTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    payload: {
+      date: string;
+      file_name: string;
+      total: number;
+      records: number;
+      errors: number;
+    };
+  }>;
+}
+
+const UploadTooltip = ({ active, payload }: UploadTooltipProps) => {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const point = payload[0].payload;
+
+  return (
+    <div className="rounded-md border bg-background p-2 text-xs shadow-md">
+      <p className="mb-1 max-w-[240px] truncate font-semibold">{point.file_name}</p>
+      <p className="mb-1 text-muted-foreground">
+        {new Date(point.date).toLocaleString('pt-BR', {
+          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        })}
+      </p>
+      <p>✓ Cadastros: <span className="font-medium text-green-600">{point.total.toLocaleString('pt-BR')}</span></p>
+      <p>📦 Registros: <span className="font-medium">{point.records.toLocaleString('pt-BR')}</span></p>
+      <p>✗ Erros: <span className="font-medium text-destructive">{point.errors.toLocaleString('pt-BR')}</span></p>
+    </div>
+  );
 };
 
 const Index = () => {
@@ -109,46 +150,52 @@ const Index = () => {
     refetchInterval: 5000,
   });
 
-  // Busca histórico dos últimos cadastros para o gráfico de linha
-  const { data: timelineData } = useQuery<TimelinePoint[]>({
-    queryKey: ['automationTimeline'],
-    queryFn: fetchTimeline,
+  // Busca as 4 últimas remessas (uploads) para o gráfico de linha
+  const { data: uploadsData } = useQuery<UploadPoint[]>({
+    queryKey: ['recentUploads'],
+    queryFn: fetchRecentUploads,
     refetchInterval: 30000,
   });
 
-  // Apenas dias com cadastros concluídos para otimizar a visualização do gráfico
-  const timelineChartData = useMemo(
-    () => (timelineData || []).filter(point => point.total > 0),
-    [timelineData]
+  // Um ponto por remessa, mantendo as 4 mais recentes em ordem cronológica
+  const uploadChartData = useMemo(
+    () => (uploadsData || []).map((u) => ({
+      date: u.started_at,
+      file_name: u.file_name,
+      total: u.success_count,
+      records: u.total_records,
+      errors: u.error_count,
+    })),
+    [uploadsData]
   );
 
-  // Estatísticas resumidas dos cadastros para a legenda do gráfico
-  const timelineStats = useMemo(() => {
-    if (timelineChartData.length === 0) return null;
+  // Estatísticas resumidas das remessas para a legenda do gráfico
+  const uploadStats = useMemo(() => {
+    if (uploadChartData.length === 0) return null;
 
     const formatDate = (date: string) =>
       new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-    const total = timelineChartData.reduce((sum, p) => sum + p.total, 0);
-    const media = Math.round(total / timelineChartData.length);
+    const total = uploadChartData.reduce((sum, p) => sum + p.total, 0);
+    const media = Math.round(total / uploadChartData.length);
 
-    let recorde = timelineChartData[0];
-    let menor = timelineChartData[0];
-    for (const p of timelineChartData) {
+    let recorde = uploadChartData[0];
+    let menor = uploadChartData[0];
+    for (const p of uploadChartData) {
       if (p.total > recorde.total) recorde = p;
       if (p.total < menor.total) menor = p;
     }
 
     let maiorSalto: { valor: number; de: string; para: string } | null = null;
-    for (let i = 1; i < timelineChartData.length; i++) {
-      const diff = timelineChartData[i].total - timelineChartData[i - 1].total;
+    for (let i = 1; i < uploadChartData.length; i++) {
+      const diff = uploadChartData[i].total - uploadChartData[i - 1].total;
       if (diff > 0 && (!maiorSalto || diff > maiorSalto.valor)) {
-        maiorSalto = { valor: diff, de: timelineChartData[i - 1].date, para: timelineChartData[i].date };
+        maiorSalto = { valor: diff, de: uploadChartData[i - 1].date, para: uploadChartData[i].date };
       }
     }
 
     return { total, media, recorde, menor, maiorSalto, formatDate };
-  }, [timelineChartData]);
+  }, [uploadChartData]);
 
   // Mutation para iniciar automação
   const startAutomation = useMutation({
@@ -533,38 +580,38 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* Histórico de Cadastros - gráfico de linha */}
+        {/* Últimas Remessas - gráfico de linha */}
         <Card className="border-border shadow-md hover:shadow-lg transition-all duration-300 bg-card overflow-hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
-              Histórico de Cadastros
+              Últimas Remessas de Dados
             </CardTitle>
             <CardDescription>
-              Cadastros concluídos por dia desde o primeiro registro
+              Cadastros concluídos nas 4 remessas (uploads) mais recentes
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!timelineData ? (
+            {!uploadsData ? (
               <div className="h-64 bg-muted animate-pulse rounded-lg"></div>
-            ) : timelineChartData.length === 0 ? (
+            ) : uploadChartData.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sem dados suficientes para o gráfico</p>
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-center gap-2 pb-4">
-                  <Badge variant="secondary">📈 Total {timelineStats?.total.toLocaleString('pt-BR')}</Badge>
-                  <Badge variant="secondary">📊 Média/dia {timelineStats?.media.toLocaleString('pt-BR')}</Badge>
-                  <Badge variant="secondary">🏆 Recorde {timelineStats?.recorde.total.toLocaleString('pt-BR')} ({timelineStats?.formatDate(timelineStats.recorde.date)})</Badge>
-                  <Badge variant="secondary">📉 Menor {timelineStats?.menor.total.toLocaleString('pt-BR')} ({timelineStats?.formatDate(timelineStats.menor.date)})</Badge>
-                  {timelineStats?.maiorSalto && (
+                  <Badge variant="secondary">📈 Total {uploadStats?.total.toLocaleString('pt-BR')}</Badge>
+                  <Badge variant="secondary">📊 Média/remessa {uploadStats?.media.toLocaleString('pt-BR')}</Badge>
+                  <Badge variant="secondary">🏆 Maior {uploadStats?.recorde.total.toLocaleString('pt-BR')} ({uploadStats?.formatDate(uploadStats.recorde.date)})</Badge>
+                  <Badge variant="secondary">📉 Menor {uploadStats?.menor.total.toLocaleString('pt-BR')} ({uploadStats?.formatDate(uploadStats.menor.date)})</Badge>
+                  {uploadStats?.maiorSalto && (
                     <Badge variant="secondary">
-                      ▲ Maior salto +{timelineStats.maiorSalto.valor.toLocaleString('pt-BR')} ({timelineStats.formatDate(timelineStats.maiorSalto.de)} → {timelineStats.formatDate(timelineStats.maiorSalto.para)})
+                      ▲ Maior salto +{uploadStats.maiorSalto.valor.toLocaleString('pt-BR')} ({uploadStats.formatDate(uploadStats.maiorSalto.de)} → {uploadStats.formatDate(uploadStats.maiorSalto.para)})
                     </Badge>
                   )}
                 </div>
                 <ResponsiveContainer width="100%" height={280}>
                 <AreaChart
-                  data={timelineChartData}
+                  data={uploadChartData}
                   margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
                 >
                   <defs>
@@ -577,23 +624,17 @@ const Index = () => {
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 11 }}
-                    tickFormatter={(value: string) => {
-                      const d = new Date(value);
-                      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-                    }}
-                    minTickGap={28}
+                    tickFormatter={(value: string) =>
+                      new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                    }
+                    minTickGap={16}
                   />
                   <YAxis
                     tick={{ fontSize: 11 }}
                     allowDecimals={false}
                     tickFormatter={(value: number) => value.toLocaleString('pt-BR')}
                   />
-                  <Tooltip
-                    formatter={(value: number | string) => [value.toLocaleString('pt-BR'), 'Cadastros']}
-                    labelFormatter={(label: string) =>
-                      new Date(label).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                    }
-                  />
+                  <Tooltip content={<UploadTooltip />} />
                   <Area
                     type="monotone"
                     dataKey="total"
