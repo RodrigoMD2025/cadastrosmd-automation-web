@@ -38,6 +38,7 @@ interface AutomationStatus {
   restantes: number;
   errors: number;
   is_running: boolean;
+  num_machines?: number;
   run_id: string | null;
   automation_progress: {
     processed: number;
@@ -203,6 +204,22 @@ const Index = () => {
       : 0;
 
   const canStartAutomation = !data?.is_running && (data?.restantes || 0) > 0;
+
+  // Mesmas regras de escala do backend (api/automation/start.ts):
+  // até 100 registros = 1 máquina, >100 = 2, >200 = 3, >300 = 4, >400 = 5
+  const getNumMachines = (totalRecords: number): number => {
+    if (totalRecords > 400) return 5;
+    if (totalRecords > 300) return 4;
+    if (totalRecords > 200) return 3;
+    if (totalRecords > 100) return 2;
+    return 1;
+  };
+
+  // Durante a execução usa o total da run; parado, projeta pelos pendentes
+  const numMachines = data?.num_machines
+    ?? getNumMachines(data?.is_running ? (data?.automation_progress?.total || 0) : (data?.restantes || 0));
+
+  const MAX_MACHINES = 5;
 
   // Timer para mostrar tempo decorrido e ETA
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -409,39 +426,47 @@ const Index = () => {
                   <span className={`relative inline-flex rounded-full h-2 w-2 ${data?.is_running ? 'bg-green-500' : 'bg-gray-400'}`}></span>
                 </span>
                 Máquinas Docker em uso
+                {data?.is_running && (
+                  <span className="ml-auto font-semibold text-green-600">
+                    {numMachines} de {MAX_MACHINES}
+                  </span>
+                )}
               </p>
               <div className="flex items-center justify-between gap-3">
-                {[1, 2, 3, 4].map((n) => (
-                  <div
-                    key={n}
-                    className={`relative flex-1 flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all duration-500 ${
-                      data?.is_running
-                        ? 'bg-green-500/15 border-green-500/40 shadow-[0_0_10px_rgba(34,197,94,0.4)]'
-                        : 'bg-muted/40 border-transparent opacity-40'
-                    }`}
-                  >
-                    {data?.is_running && (
-                      <span className="absolute -top-0.5 right-0.5 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                      </span>
-                    )}
-                    <svg
-                      viewBox="0 0 24 24"
-                      className={`w-6 h-6 ${data?.is_running ? 'text-green-600' : 'text-muted-foreground'}`}
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
+                {Array.from({ length: MAX_MACHINES }, (_, i) => i + 1).map((n) => {
+                  const inUse = data?.is_running && n <= numMachines;
+                  return (
+                    <div
+                      key={n}
+                      className={`relative flex-1 flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all duration-500 ${
+                        inUse
+                          ? 'bg-green-500/15 border-green-500/40 shadow-[0_0_10px_rgba(34,197,94,0.4)]'
+                          : 'bg-muted/40 border-transparent opacity-40'
+                      }`}
                     >
-                      <rect x="3" y="4" width="18" height="10" rx="2" />
-                      <path d="M2 14h20v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3z" />
-                      <path d="M9 21h6" />
-                    </svg>
-                    <span className={`text-xs leading-none font-semibold ${data?.is_running ? 'text-green-600' : 'text-muted-foreground'}`}>
-                      {n}
-                    </span>
-                  </div>
-                ))}
+                      {inUse && (
+                        <span className="absolute -top-0.5 right-0.5 flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </span>
+                      )}
+                      <svg
+                        viewBox="0 0 24 24"
+                        className={`w-6 h-6 ${inUse ? 'text-green-600' : 'text-muted-foreground'}`}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <rect x="3" y="4" width="18" height="10" rx="2" />
+                        <path d="M2 14h20v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3z" />
+                        <path d="M9 21h6" />
+                      </svg>
+                      <span className={`text-xs leading-none font-semibold ${inUse ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {n}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </Alert>

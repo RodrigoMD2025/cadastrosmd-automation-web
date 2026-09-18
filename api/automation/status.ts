@@ -1,6 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Client } from 'pg';
 
+// Mesmas regras de escala do api/automation/start.ts
+function getNumJobs(totalRecords: number): number {
+  let numJobs = 1;
+  if (totalRecords > 400) numJobs = 5;
+  else if (totalRecords > 300) numJobs = 4;
+  else if (totalRecords > 200) numJobs = 3;
+  else if (totalRecords > 100) numJobs = 2;
+  return numJobs;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
   const origin = req.headers.origin || '';
@@ -149,6 +159,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       restantes: remaining,
       errors: errors,
       is_running: isRunning,
+      num_machines: automationData
+        ? getNumJobs(parseInt(automationData.total_records, 10))
+        : getNumJobs(remaining),
       run_id: automationData?.run_id || null,
       automation_progress: automationData ? {
         processed: parseInt(automationData.processed_records, 10),
