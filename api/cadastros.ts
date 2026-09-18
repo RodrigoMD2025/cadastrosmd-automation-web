@@ -1,14 +1,25 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Client } from 'pg';
 
-// Converte datas no formato brasileiro (dd/mm/aaaa ou dd-mm-aaaa) para ISO (aaaa-mm-dd)
+// Converte datas no formato brasileiro para ISO (aaaa-mm-dd ou aaaa-mm)
 function normalizeSearchTerm(term: string): string {
-    const match = term.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
-    if (!match) return term;
+    // Data completa: dd/mm/aaaa ou dd-mm-aaaa
+    const fullDate = term.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+    if (fullDate) {
+        const [, day, month, year] = fullDate;
+        const fullYear = year.length === 2 ? `20${year}` : year;
+        return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
 
-    const [, day, month, year] = match;
-    const fullYear = year.length === 2 ? `20${year}` : year;
-    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    // Mês/ano: mm/aaaa ou mm-aaaa
+    const monthYear = term.match(/^(\d{1,2})[/-](\d{2,4})$/);
+    if (monthYear) {
+        const [, month, year] = monthYear;
+        const fullYear = year.length === 2 ? `20${year}` : year;
+        return `${fullYear}-${month.padStart(2, '0')}`;
+    }
+
+    return term;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
