@@ -10,20 +10,57 @@
 
 ## 📋 Índice
 
-- [Visão Geral](#-visão-geral)
+- [Problema de Negócio](#-problema-de-negócio)
+- [Solução Desenvolvida](#-solução-desenvolvida)
+- [Resultado](#-resultado)
 - [Funcionalidades](#-funcionalidades)
 - [Arquitetura](#-arquitetura)
 - [Tecnologias](#-tecnologias)
 - [Configuração](#-configuração)
 - [Uso](#-uso)
-- [Performance](#-performance)
 - [Troubleshooting](#-troubleshooting)
 
 ---
 
-## 🎯 Visão Geral
+## 🎯 Problema de Negócio
 
-O **Procastneitor Bot** é um sistema completo de automação para cadastro em massa de músicas. Desenvolvido para eliminar o trabalho manual repetitivo, o sistema processa centenas ou milhares de cadastros automaticamente, com:
+O cadastro de músicas no sistema MusicDelivery era realizado **manualmente, registro por registro**, diretamente na interface do sistema.
+
+Esse processo apresentava desafios como:
+
+* 🐌 tempo elevado para cadastrar lotes grandes de músicas, um a um;
+* 📋 necessidade de preencher os mesmos campos repetidamente (ISRC, artista, titulares);
+* ⚠️ risco de erros humanos em digitação e preenchimento;
+* 🔎 falta de visibilidade sobre o progresso do cadastro em andamento;
+* ⏱️ nenhuma estimativa de tempo restante para concluir um lote;
+* 🚫 ausência de um mecanismo automático para identificar e reprocessar falhas;
+* 📊 dificuldade para consolidar o histórico de cadastros já realizados.
+
+O problema central era transformar um processo manual, repetitivo e sem visibilidade em um **fluxo automatizado, escalável e monitorável de cadastro em massa**.
+
+---
+
+## 💡 Solução Desenvolvida
+
+Foi desenvolvido um sistema completo de automação, combinando um painel web, execução paralela via GitHub Actions e um bot de automação com Playwright:
+
+```text
+Planilha de músicas (Excel)
+        ↓
+Upload via dashboard web
+        ↓
+Definição automática de nº de máquinas
+        ↓
+Disparo de jobs paralelos (GitHub Actions)
+        ↓
+Login e preenchimento automatizados (Playwright)
+        ↓
+Neon PostgreSQL (registros + progresso + erros)
+        ↓
+Dashboard em tempo real (KPIs, ETA, exportação)
+```
+
+A solução combina **React, Vercel Serverless, GitHub Actions, Neon PostgreSQL e Playwright** para transformar o cadastro manual em um fluxo automatizado, paralelo e monitorado de ponta a ponta, com:
 
 - ⚡ **Processamento paralelo dinâmico** (1-5 máquinas simultâneas)
 - 📊 **Dashboard em tempo real** com KPIs e progresso
@@ -32,6 +69,43 @@ O **Procastneitor Bot** é um sistema completo de automação para cadastro em m
 - 🔄 **Sistema de retry automático** para erros
 - 📈 **Exportação de dados** (CSV, Excel, PDF)
 - 🌐 **100% gratuito** usando tier free de serviços cloud
+
+---
+
+## 📈 Resultado
+
+A automação transformou um processo manual e sem visibilidade em um fluxo estruturado, paralelo e monitorável de cadastro.
+
+### Ganhos observados
+
+* ⚡ redução expressiva do tempo total de cadastro em lotes grandes, via paralelização dinâmica;
+* 📊 visibilidade em tempo real do progresso, com KPIs e ETA;
+* 🔎 rastreabilidade completa de sucessos e erros por registro;
+* 🔄 recuperação automática de falhas via sistema de retry;
+* 📤 upload simplificado por planilha, sem digitação manual campo a campo;
+* 📈 exportação facilitada dos dados processados (CSV, Excel, PDF);
+* 🌐 operação com custo zero, dentro dos tiers gratuitos de Vercel, Neon e GitHub Actions.
+
+### Benchmarks de performance
+
+| Registros | Máquinas | Tempo (antes) | Tempo (depois) | Redução |
+|-----------|----------|---------------|----------------|---------|
+| 100       | 1        | ~33 min       | ~33 min        | 0%      |
+| 200       | 2        | ~67 min       | ~35 min        | 48%     |
+| 300       | 3        | ~100 min      | ~33 min        | 67%     |
+| 500       | 5        | ~167 min      | ~33 min        | 80%     |
+
+**Tempo médio por registro**: ~20 segundos
+
+### Otimizações implementadas
+
+1. **Processamento Paralelo**: particionamento baseado em módulo matemático (modulo-based partitioning);
+2. **Timeouts Reduzidos**: 25s total, 5s/3s por seletor;
+3. **Wait Optimization**: `domcontentloaded` ao invés de `networkidle`;
+4. **Progresso Real-time**: atualização a cada registro (não em lote);
+5. **Database Pooling**: conexões reutilizadas.
+
+> **Nota:** os percentuais de redução acima refletem os benchmarks medidos nos testes de carga descritos na tabela. Ganhos adicionais (visibilidade, rastreabilidade, retry automático) são funcionalidades observáveis proporcionadas pela automação.
 
 ---
 
@@ -51,8 +125,6 @@ Escalonamento automático baseado no volume:
 - **201-300 registros**: 3 máquinas
 - **301-400 registros**: 4 máquinas
 - **≥401 registros**: 5 máquinas (máximo)
-
-**Ganho de Performance**: Redução de até **80% no tempo total** para grandes lotes.
 
 ### 3. Dashboard de Monitoramento
 - **KPIs em tempo real**: Total, Concluídos, Pendentes, Erros
@@ -332,29 +404,6 @@ Acesse em: `https://RodrigoMD2025.github.io/cadastrosmd-automation-web/`
 2. **Clique em "Ver Erros Detalhados"**
 3. **Analise** tipo de erro e mensagem
 4. **Retry manual** se necessário
-
----
-
-## ⚡ Performance
-
-### Benchmarks
-
-| Registros | Máquinas | Tempo (antes) | Tempo (depois) | Redução |
-|-----------|----------|---------------|----------------|---------|
-| 100       | 1        | ~33 min       | ~33 min        | 0%      |
-| 200       | 2        | ~67 min       | ~35 min        | 48%     |
-| 300       | 3        | ~100 min      | ~33 min        | 67%     |
-| 500       | 5        | ~167 min      | ~33 min        | 80%     |
-
-**Tempo médio por registro**: ~20 segundos
-
-### Otimizações Implementadas
-
-1. **Processamento Paralelo**: Modulo-based partitioning
-2. **Timeouts Reduzidos**: 25s total, 5s/3s seletores
-3. **Wait Optimization**: `domcontentloaded` ao invés de `networkidle`
-4. **Progresso Real-time**: Atualização a cada registro (não em batch)
-5. **Database Pooling**: Conexões reutilizadas
 
 ---
 
