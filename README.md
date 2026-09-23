@@ -1,4 +1,4 @@
-# 🎵 Sistema de Automação de Cadastros Musicais
+# 🎵 Automação de Cadastros Musicais
 
 > **Automação inteligente para cadastro em massa de músicas no MusicDelivery com processamento paralelo e monitoramento em tempo real.**
 
