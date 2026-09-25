@@ -451,28 +451,6 @@ Acesse em: `https://RodrigoMD2025.github.io/cadastrosmd-automation-web/`
 
 ---
 
-## 📊 Limites e Quotas
-
-### GitHub Actions (Free Tier)
-- ✅ 2.000 minutos/mês
-- ✅ 20 jobs simultâneos
-- ✅ 6h timeout por job
-
-### Vercel (Hobby Plan)
-- ✅ 100 GB-Hrs serverless functions/mês
-- ✅ 100 GB bandwidth/mês
-- ✅ 500 MB Blob storage
-- ✅ 5 GB Blob bandwidth/mês
-
-### Neon (Free Tier)
-- ✅ 0.5 GB storage
-- ✅ 1 database
-- ✅ 10 GB data transfer/mês
-
-**Custo Total**: **R$ 0,00/mês** 🎉
-
----
-
 ## 🤝 Contribuindo
 
 Contribuições são bem-vindas! Para contribuir:
