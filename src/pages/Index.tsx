@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,7 +74,7 @@ interface UploadPoint {
 }
 
 // Quantidade de remessas (uploads) mantidas no gráfico de linha
-const MAX_UPLOAD_POINTS = 4;
+const MAX_UPLOAD_POINTS = 5;
 
 const fetchAutomationStatus = async (): Promise<AutomationStatus> => {
   const response = await fetch(`${API_URL}/api/automation/status`);
@@ -157,7 +157,7 @@ const Index = () => {
     refetchInterval: 30000,
   });
 
-  // Um ponto por remessa, mantendo as 4 mais recentes em ordem cronológica
+  // Um ponto por remessa, mantendo as mais recentes em ordem cronológica
   const uploadChartData = useMemo(
     () => (uploadsData || []).map((u) => ({
       date: u.started_at,
@@ -169,28 +169,44 @@ const Index = () => {
     [uploadsData]
   );
 
-  // Estatísticas resumidas das remessas para a legenda do gráfico
+  // Estatísticas do gráfico, somando as remessas do mesmo dia
+  // (3 lotes de 500 no mesmo dia contam como 1500, não 500)
   const uploadStats = useMemo(() => {
     if (uploadChartData.length === 0) return null;
 
     const formatDate = (date: string) =>
       new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-    const total = uploadChartData.reduce((sum, p) => sum + p.total, 0);
-    const media = Math.round(total / uploadChartData.length);
-
-    let recorde = uploadChartData[0];
-    let menor = uploadChartData[0];
+    const byDay = new Map<string, { date: string; total: number }>();
     for (const p of uploadChartData) {
+      const d = new Date(p.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const current = byDay.get(key);
+      if (current) {
+        current.total += p.total;
+      } else {
+        byDay.set(key, { date: p.date, total: p.total });
+      }
+    }
+
+    const daily = Array.from(byDay.values())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const total = daily.reduce((sum, p) => sum + p.total, 0);
+    const media = Math.round(total / daily.length);
+
+    let recorde = daily[0];
+    let menor = daily[0];
+    for (const p of daily) {
       if (p.total > recorde.total) recorde = p;
       if (p.total < menor.total) menor = p;
     }
 
     let maiorSalto: { valor: number; de: string; para: string } | null = null;
-    for (let i = 1; i < uploadChartData.length; i++) {
-      const diff = uploadChartData[i].total - uploadChartData[i - 1].total;
+    for (let i = 1; i < daily.length; i++) {
+      const diff = daily[i].total - daily[i - 1].total;
       if (diff > 0 && (!maiorSalto || diff > maiorSalto.valor)) {
-        maiorSalto = { valor: diff, de: uploadChartData[i - 1].date, para: uploadChartData[i].date };
+        maiorSalto = { valor: diff, de: daily[i - 1].date, para: daily[i].date };
       }
     }
 
@@ -271,6 +287,9 @@ const Index = () => {
   // Timer para mostrar tempo decorrido e ETA
   const [elapsedTime, setElapsedTime] = useState(0);
   const [eta, setEta] = useState<number | null>(null);
+  const [avgPerItem, setAvgPerItem] = useState<number | null>(null);
+  // Instante do primeiro registro processado, para não contar o tempo de provisionamento
+  const workStartRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (data?.is_running && data?.automation_progress?.started_at) {
@@ -281,28 +300,31 @@ const Index = () => {
         const elapsed = Math.floor((now - startTime) / 1000); // segundos
         setElapsedTime(elapsed);
 
-        // Calculate ETA
-        if (data.automation_progress && data.automation_progress.processed > 0) {
-          const processed = data.automation_progress.processed;
-          const total = data.automation_progress.total;
-          const remaining = total - processed;
+        // processed/total somam todas as máquinas em paralelo
+        const processed = data.automation_progress?.processed || 0;
+        const total = data.automation_progress?.total || 0;
+        const remaining = total - processed;
 
-          if (remaining > 0) {
-            const avgTimePerItem = elapsed / processed;
-            const estimatedRemaining = Math.floor(avgTimePerItem * remaining);
-            setEta(estimatedRemaining);
-          } else {
-            setEta(0);
-          }
+        if (processed > 0) {
+          if (workStartRef.current === null) workStartRef.current = now;
+
+          // Média única da frota: tempo de trabalho / registros de todas as máquinas
+          const workingSeconds = Math.max((now - workStartRef.current) / 1000, 1);
+          const avgTimePerItem = workingSeconds / processed;
+          setAvgPerItem(avgTimePerItem);
+          setEta(remaining > 0 ? Math.floor(avgTimePerItem * remaining) : 0);
         } else {
+          setAvgPerItem(null);
           setEta(null);
         }
       }, 1000);
 
       return () => clearInterval(interval);
     } else {
+      workStartRef.current = null;
       setElapsedTime(0);
       setEta(null);
+      setAvgPerItem(null);
     }
   }, [data?.is_running, data?.automation_progress?.started_at, data?.automation_progress?.processed, data?.automation_progress?.total]);
 
@@ -405,6 +427,11 @@ const Index = () => {
               {data?.is_running && (
                 <div className="flex gap-4 text-sm font-mono">
                   <span>⏱️ {formatElapsedTime(elapsedTime)}</span>
+                  {avgPerItem !== null && (
+                    <span className="text-muted-foreground">
+                      ⚡ {avgPerItem.toFixed(1).replace('.', ',')}s/reg
+                    </span>
+                  )}
                   {eta !== null && (
                     <span className="text-muted-foreground">
                       🏁 ETA: {formatElapsedTime(eta)}
@@ -588,7 +615,7 @@ const Index = () => {
               Últimas Remessas de Dados
             </CardTitle>
             <CardDescription>
-              Cadastros concluídos nas 4 remessas (uploads) mais recentes
+              Cadastros concluídos nas {MAX_UPLOAD_POINTS} remessas (uploads) mais recentes
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -600,9 +627,9 @@ const Index = () => {
               <>
                 <div className="flex flex-wrap items-center justify-center gap-2 pb-4">
                   <Badge variant="secondary">📈 Total {uploadStats?.total.toLocaleString('pt-BR')}</Badge>
-                  <Badge variant="secondary">📊 Média/remessa {uploadStats?.media.toLocaleString('pt-BR')}</Badge>
-                  <Badge variant="secondary">🏆 Maior {uploadStats?.recorde.total.toLocaleString('pt-BR')} ({uploadStats?.formatDate(uploadStats.recorde.date)})</Badge>
-                  <Badge variant="secondary">📉 Menor {uploadStats?.menor.total.toLocaleString('pt-BR')} ({uploadStats?.formatDate(uploadStats.menor.date)})</Badge>
+                  <Badge variant="secondary">📊 Média/dia {uploadStats?.media.toLocaleString('pt-BR')}</Badge>
+                  <Badge variant="secondary">🏆 Maior/dia {uploadStats?.recorde.total.toLocaleString('pt-BR')} ({uploadStats?.formatDate(uploadStats.recorde.date)})</Badge>
+                  <Badge variant="secondary">📉 Menor/dia {uploadStats?.menor.total.toLocaleString('pt-BR')} ({uploadStats?.formatDate(uploadStats.menor.date)})</Badge>
                   {uploadStats?.maiorSalto && (
                     <Badge variant="secondary">
                       ▲ Maior salto +{uploadStats.maiorSalto.valor.toLocaleString('pt-BR')} ({uploadStats.formatDate(uploadStats.maiorSalto.de)} → {uploadStats.formatDate(uploadStats.maiorSalto.para)})

@@ -57,6 +57,12 @@ class WebAutomation:
         self.success_count = 0
         self.error_count = 0
         self.skipped_count = 0
+
+        # Últimos valores enviados ao banco, para publicar deltas e somar entre as máquinas
+        self.reported_processed = 0
+        self.reported_success = 0
+        self.reported_error = 0
+        self.reported_skipped = 0
         
         # Lista de registros que falharam para retry posterior
         self.failed_records = []
@@ -129,51 +135,93 @@ class WebAutomation:
 
 
     def inicializar_progresso(self, total_records):
-        """Inicializa o registro de progresso no banco"""
+        """Marca a execução como em andamento sem sobrescrever o total global"""
         try:
             with psycopg2.connect(self.database_url) as conn:
                 with conn.cursor() as cur:
+                    # total_records pertence à execução inteira e já foi gravado pela API,
+                    # cada job apenas sinaliza que começou a trabalhar
                     query = '''
                         UPDATE public.automation_progress
                         SET status = 'running',
-                            total_records = %s,
                             updated_at = NOW()
                         WHERE run_id = %s
                     '''
-                    cur.execute(query, (total_records, self.run_id))
+                    cur.execute(query, (self.run_id,))
                     conn.commit()
-                    logging.info(f"Progresso inicializado: {total_records} registros")
+                    logging.info(f"Progresso iniciado (lote local: {total_records} registros)")
         except Exception as e:
             logging.error(f"Erro ao inicializar progresso: {e}")
 
     def atualizar_progresso(self):
-        """Atualiza o progresso em tempo real"""
+        """Publica o delta deste job, somando no contador global da frota"""
         try:
+            delta_processed = self.total_processed - self.reported_processed
+            delta_success = self.success_count - self.reported_success
+            delta_error = self.error_count - self.reported_error
+            delta_skipped = self.skipped_count - self.reported_skipped
+
+            if delta_processed == 0 and delta_success == 0 and delta_error == 0 and delta_skipped == 0:
+                return
+
             with psycopg2.connect(self.database_url) as conn:
                 with conn.cursor() as cur:
                     query = '''
                         UPDATE public.automation_progress
-                        SET processed_records = %s,
-                            success_count = %s,
-                            error_count = %s,
-                            skipped_count = %s,
+                        SET processed_records = processed_records + %s,
+                            success_count = success_count + %s,
+                            error_count = GREATEST(error_count + %s, 0),
+                            skipped_count = skipped_count + %s,
                             updated_at = NOW()
                         WHERE run_id = %s
                     '''
                     cur.execute(query, (
-                        self.total_processed,
-                        self.success_count,
-                        self.error_count,
-                        self.skipped_count,
+                        delta_processed,
+                        delta_success,
+                        delta_error,
+                        delta_skipped,
                         self.run_id
                     ))
                     conn.commit()
+
+            self.reported_processed = self.total_processed
+            self.reported_success = self.success_count
+            self.reported_error = self.error_count
+            self.reported_skipped = self.skipped_count
         except Exception as e:
             logging.error(f"Erro ao atualizar progresso: {e}")
 
-    def finalizar_progresso(self, status='completed', error_message=None):
-        """Finaliza o registro de progresso"""
+    def todos_jobs_concluidos(self):
+        """Retorna True quando processados + pulados cobrem o total da execução"""
         try:
+            with psycopg2.connect(self.database_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute('''
+                        SELECT processed_records, skipped_count, total_records
+                        FROM public.automation_progress
+                        WHERE run_id = %s
+                    ''', (self.run_id,))
+                    row = cur.fetchone()
+
+                    if not row:
+                        return True
+
+                    processed, skipped, total = row
+                    if not total or total <= 0:
+                        return True
+
+                    return (processed or 0) + (skipped or 0) >= total
+        except Exception as e:
+            logging.error(f"Erro ao verificar conclusão dos jobs: {e}")
+            return True
+
+    def finalizar_progresso(self, status='completed', error_message=None):
+        """Finaliza a execução somente quando todas as máquinas terminaram"""
+        try:
+            if status == 'completed' and not self.todos_jobs_concluidos():
+                logging.info("⏳ Lote finalizado, mas outras máquinas ainda processam. Execução mantida em andamento.")
+                return
+
             with psycopg2.connect(self.database_url) as conn:
                 with conn.cursor() as cur:
                     query = '''
@@ -535,6 +583,9 @@ class WebAutomation:
                 self.atualizar_progresso()
             
             logging.info(f"\n🔄 RETRY Completo: {retry_success}/{retry_count} recuperados\n")
+
+        # Garante que os últimos deltas (ex.: registros pulados no fim do lote) sejam publicados
+        self.atualizar_progresso()
 
     async def run_task_with_time_estimate(self):
         # Testar conexão com banco antes de começar
